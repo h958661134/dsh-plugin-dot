@@ -80,11 +80,11 @@ Slash commands such as `/task 周五18点 交周报 !高`, `/remind 30分钟后 
 
 ```mermaid
 flowchart LR
-    A[Dot wants to call a tool] --> B{Rule gate<br/>tools/pre-execute}
-    B -->|payments · transfers · passwords · keys| H[Handed to you]
-    B -->|messages · deletion · dangerous commands| Q[Asks you first]
-    B -->|your block rules| X[Blocked]
-    B -->|everything else| D[Goes to DSH<br/>DSH permissions still apply]
+    A["Dot wants to call a tool"] --> B{"Rule gate<br/>tools/pre-execute"}
+    B -->|"payments · transfers · passwords · keys"| H["Handed to you"]
+    B -->|"messages · deletion · dangerous commands"| Q["Asks you first"]
+    B -->|"your block rules"| X["Blocked"]
+    B -->|"everything else"| D["Goes to DSH<br/>DSH permissions still apply"]
 ```
 
 - **Built-in rules can't be removed.** Payments, transfers, passwords, keys and security settings are always handed to you. Sending messages, posting, deleting and dangerous commands always ask first.

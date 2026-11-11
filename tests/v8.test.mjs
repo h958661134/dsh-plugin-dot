@@ -99,7 +99,7 @@ test('dot_sessions relay / dispatch / archive 只起草，不执行', async () =
   const { tool, dataDir } = await presetTool(fakeQuery())
   const r = await tool.execute({ action: 'relay', id: 'u1', text: '把图表也补上' })
   assert.match(r.summary, /还没有发出去/)
-  const d = await tool.execute({ action: 'dispatch', title: '补测试', brief: '给 lib 补单元测试，全部通过为止', cwd: 'E:/proj' })
+  const d = await tool.execute({ action: 'dispatch', title: '补测试', brief: '给 lib 补单元测试，全部通过为止', cwd: process.platform === 'win32' ? 'E:/proj' : '/tmp/proj' })
   assert.match(d.summary, /点「开始」/)
   await assert.rejects(tool.execute({ action: 'dispatch', title: 'x', brief: 'y', cwd: 'relative' }), /绝对路径/)
   const a = await tool.execute({ action: 'archive', ids: ['u2', 'u3'] })

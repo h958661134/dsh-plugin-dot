@@ -158,11 +158,11 @@ Dot 能替你做很多事，所以边界必须清楚，而且由代码强制，�
 
 ```mermaid
 flowchart LR
-    A[Dot 想调用一个工具] --> B{规则闸门<br/>tools/pre-execute}
-    B -->|付钱 · 转账 · 密码 · 密钥| H[交给你<br/>Dot 告诉你做哪一步]
-    B -->|发消息 · 删除 · 危险命令| Q[先问你]
-    B -->|你设的 block| X[拦下]
-    B -->|其他| D[交给 DSH<br/>DSH 自己的权限照常生效]
+    A["Dot 想调用一个工具"] --> B{"规则闸门<br/>tools/pre-execute"}
+    B -->|"付钱 · 转账 · 密码 · 密钥"| H["交给你<br/>Dot 告诉你做哪一步"]
+    B -->|"发消息 · 删除 · 危险命令"| Q["先问你"]
+    B -->|"你设的 block"| X["拦下"]
+    B -->|"其他"| D["交给 DSH<br/>DSH 自己的权限照常生效"]
 ```
 
 | 层 | 内容 |
@@ -262,18 +262,18 @@ Dot 是一个标准的 Cordis 插件 bundle，分两部分：
 
 ```mermaid
 flowchart TB
-    subgraph DSH
-      P[Dot 预设<br/>提示词 · 工具 · 快捷指令 · 规则闸门]
-      H[Host<br/>会话监控 · 巡检 · 本机接口]
-      S[(state.json)]
-      Q[DSH 服务<br/>定时 · 子代理 · 会话记录 · 工作区]
+    subgraph DSH["DeepSeek Harness"]
+      P["Dot 预设<br/>提示词 · 工具 · 快捷指令 · 规则闸门"]
+      H["Host<br/>会话监控 · 巡检 · 本机接口"]
+      S[("state.json")]
+      Q["DSH 服务<br/>定时 · 子代理 · 会话记录 · 工作区"]
     end
-    U[网页端<br/>小精灵 · Dot 窗口 · 会话总览]
+    U["网页端<br/>小精灵 · Dot 窗口 · 会话总览"]
     P <--> S
     H <--> S
     P --> Q
     H --> Q
-    U <-->|同源 · 只接受本机| H
+    U <-->|"同源 · 只接受本机"| H
 ```
 
 - 提醒和周期任务直接建在 DSH 的定时服务上，和 DSH 自己的「自动化任务」是同一套。
