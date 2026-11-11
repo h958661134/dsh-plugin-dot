@@ -1,0 +1,105 @@
+# dsh-plugin-dot bundle patch —— 新增一个名为「Dot 总管」的 agent preset。
+#
+# 在会话的预设选择器里选择「Dot 总管」即进入 Dot 模式。工具集沿用 standard
+# 预设的常用部分（命令行、文件、网页、定时提醒、子代理、技能、提问），
+# 去掉了编码专用的 plan mode，并加入 dsh-dot 的记忆 / 事务 / 规则 / 简报。
+#
+# 另有一行全局的 dot-host 提供浮标（右下角的 Dot 小精灵）。
+#
+# 想调整 Dot 的配置（时区、固定规则、数据目录等），在你自己 profile 的
+# cordis.patch.yml 里按 id `preset-dot` 覆盖整行即可。
+- insert:
+    - id: preset-dot
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: dot
+        name: Dot 总管
+        description: 你的个人总管：记住你、替你跟进事务、拆解并委派任务、每天主动汇报。
+        order: 0
+        plugins:
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              prefix: >-
+                你是 Dot，用户的个人 AI 总管，由 {{model}} 模型驱动、运行在 DeepSeek Harness 上。
+                你像一位可靠的私人助理那样工作：记得用户说过的话，替用户盯住每一件事，
+                会自己拆解和委派任务，并在合适的时候主动汇报，而不是被动等待指令。
+          - id: time-context
+            name: '@deepseek-ai/dsh-time-context'
+          - id: tool-bash
+            name: '@deepseek-ai/dsh-tool-bash'
+            disabled: !!js process.platform === 'win32'
+          - id: tool-pwsh
+            name: '@deepseek-ai/dsh-tool-pwsh'
+            disabled: !!js process.platform !== 'win32'
+          - id: tool-fs
+            name: '@deepseek-ai/dsh-tool-fs'
+            config:
+              applyPatch: false
+          - id: tool-fs-search
+            name: '@deepseek-ai/dsh-tool-fs-search'
+            config:
+              sampleOverCapGlobResults: false
+          - id: tool-jobs
+            name: '@deepseek-ai/dsh-tool-jobs'
+          - id: tool-schedule
+            name: '@deepseek-ai/dsh-tool-schedule'
+          - id: skill-filesystem
+            name: '@deepseek-ai/dsh-skill-filesystem'
+          - id: tool-skill
+            name: '@deepseek-ai/dsh-tool-skill'
+          - id: compaction
+            name: cordis:group
+            group: true
+            isolate:
+              compaction: true
+              toolResultPruner: true
+            config:
+              - id: compaction-basic
+                name: '@deepseek-ai/dsh-compaction-basic'
+              - id: command-compact
+                name: '@deepseek-ai/dsh-command-compact'
+              - id: tool-result-pruner
+                name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
+                config:
+                  thresholdChars: 8192
+                  headChars: 4096
+                  tailChars: 1024
+          - id: delegation
+            name: cordis:group
+            group: true
+            isolate:
+              workflowEngine: true
+            config:
+              - id: tool-subagent-control
+                name: '@deepseek-ai/dsh-tool-subagent-control'
+              - id: tool-subagent
+                name: '@deepseek-ai/dsh-tool-subagent'
+                config:
+                  provider: spawn
+                  toolName: subagent
+                  modelSelection: true
+                  modelDiscovery: true
+          - id: tool-ask-user
+            name: '@deepseek-ai/dsh-tool-ask-user'
+          - id: tool-todo
+            name: '@deepseek-ai/dsh-tool-todo'
+            config:
+              allowParallelInProgress: true
+          - id: tool-web
+            name: '@deepseek-ai/dsh-tool-web'
+            config:
+              fetch: true
+              searchTimeoutMs: 60000
+          - id: present
+            name: '@deepseek-ai/dsh-tool-present'
+          - id: dot
+            name: dsh-plugin-dot/agent
+            config: {}
+          - id: dot-commands
+            name: dsh-plugin-dot/commands
+            config: {}
+    # 浮标（Dot 小精灵）的 Host 侧：状态接口 + 前端脚本注入。不想要浮标时设 pet: false。
+    - id: dot-host
+      name: dsh-plugin-dot
+      config: {}
