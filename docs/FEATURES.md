@@ -84,4 +84,4 @@ cordis.patch.yml  bundle 层：注册「Dot 总管」预设 + 浮标 Host 行
 
 ## Host 接口
 
-Host 接口（只接受本机 Host、同源请求；写操作需要 `X-Dot-Client: 1` 头）：读：`GET /status`（小精灵和 Dot 面板）、`GET /sessions`（会话总览）、`GET /data`（记忆、规则、命中记录、通知路由）；写：`/rules/try`（只模拟判定）、`/prefs`（通知路由开关）、`/say`、`/done`、`/task`（完成 / 放弃 / 重开 / 删除 / 改标题和优先级 / 清空）、`/child`（子任务补一句 / 停止）、`/schedule`（只能操作 Dot 自己的定时任务）、`/session`（其他会话：停止 / 盯着 / 记为事务 / 转告 / 归档，记为事务会关联该会话）、`/sessions/search`（搜所有会话）、`/dismiss`、`/notice`、`/suggestion`（采纳或忽略建议）、`/turn`（某一轮记下的事务和建议）、`/prefs` 也能改小精灵名字和颜色。路径前缀都是 `/api/dsh-plugin-dot`。不想要小精灵时，把 `dsh-plugin-dot` 行的 config 设为 `{ pet: false }`。
+Host 接口（只接受本机 Host、同源请求；写操作需要 `X-Dot-Client: 1` 头）：读：`GET /status`（小精灵和 Dot 面板）、`GET /sessions`（会话总览）、`GET /data`（记忆、规则、命中记录、通知路由）；写：`/rules/try`（只模拟判定）、`/prefs`（通知路由开关）、`/say`、`/done`、`/task`（完成 / 放弃 / 重开 / 删除 / 改标题和优先级 / 清空）、`/child`（子任务补一句 / 停止）、`/schedule`（只能操作 Dot 自己的定时任务）、`/session`（其他会话：停止 / 盯着 / 记为事务 / 转告 / 归档，记为事务会关联该会话）、`/sessions/search`（搜所有会话）、`/focus`（桌面精灵把要打开的会话交给网页端）、`/dismiss`、`/notice`、`/suggestion`（采纳或忽略建议）、`/turn`（某一轮记下的事务和建议）、`/prefs` 也能改小精灵名字和颜色。路径前缀都是 `/api/dsh-plugin-dot`。不想要小精灵时，把 `dsh-plugin-dot` 行的 config 设为 `{ pet: false }`。

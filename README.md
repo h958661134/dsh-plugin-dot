@@ -83,11 +83,12 @@ dsh plugin --profile web add ./dsh-plugin-dot
 <td width="42%"><img src="docs/images/pet.png" alt="小精灵面板：跑完的会话、逾期事务、快捷按钮和输入框"></td>
 <td>
 
-右下角的 Dot，可以拖动。
+在 DSH 桌面版（Windows）里，小精灵常驻在**桌面**上：始终置顶，DSH 最小化了也看得见；拖到屏幕边缘会吸附，并缩进去只露出一小条。它仍然是插件的一部分，不用另外安装，DSH 退出时它也跟着退出。其他环境里，小精灵在 DSH 页面的右下角。
 
 - **六种状态**：空闲、在忙、等你确认、刚做完、有事提醒（逾期、快到期、子任务卡住）、暂停。
 - **只放「需要你」的卡**，最多 3 张。比如某个会话跑完了，可以「打开」或「知道了」；某件事逾期了，可以「完成」或「推迟 30 分钟」。
 - **一行快捷输入**，`/task` 之类的指令也能用。在任何地方按 **Alt+Shift+D** 都能打开它。
+- 点卡片上的「打开」「去处理」，会把 DSH 拉到前台并直接跳到那个会话。
 - DSH 不在前台时，同时发系统通知。
 
 </td>
@@ -210,7 +211,14 @@ flowchart LR
 
 Loader 会整体替换 `config`，所以要把整个 preset 定义复制过去再改。
 
-**全局行**（`dsh-plugin-dot` 行）：`{ pet: false }` 关掉小精灵，`{ watchOthers: false }` 不监控其他会话。
+**全局行**（`dsh-plugin-dot` 行）
+
+| 字段 | 默认 | 说明 |
+|---|---|---|
+| `pet` | 桌面版（Windows）为 `'desktop'`，其他为 `true` | `'desktop'` 用桌面精灵，`true` 只用 DSH 页面里的小精灵，`false` 都不要 |
+| `watchOthers` | `true` | `false` 时不监控其他会话 |
+
+桌面精灵的原理和安全说明见 [docs/DESKTOP-PET.md](docs/DESKTOP-PET.md)。
 
 ## 常见问题
 
@@ -230,6 +238,12 @@ DSH 只在启动时加载插件。请完全退出 DSH（从托盘退出，或在
 <summary><b>会影响我的其他会话吗？</b></summary>
 
 规则闸门和工作手册只挂在 Dot 预设上。对其他会话，Dot 只读状态，显示在会话总览里；只有你点了按钮，它才会执行停止、转告、归档这类动作。不想让它看其他会话，设 `watchOthers: false`。
+</details>
+
+<details>
+<summary><b>桌面精灵是怎么做到的？会不会是个独立程序？</b></summary>
+
+DSH 不允许插件直接开桌面窗口，所以 Dot 的 Host 用 Windows 自带的 PowerShell + WPF 启动一个小窗口，并全程管着它：DSH 退出它就退出，崩了自动拉起，你在右键菜单里关掉的不会再出现。它只连 Dot 自己的本机接口，能做的事和 DSH 页面里的小精灵一样。不想要就设 `pet: true`。详见 [docs/DESKTOP-PET.md](docs/DESKTOP-PET.md)。
 </details>
 
 <details>

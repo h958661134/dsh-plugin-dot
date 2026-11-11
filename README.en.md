@@ -58,7 +58,7 @@ Desktop users can add the folder from the **Plugins** page instead. Then **quit 
 
 | | |
 |---|---|
-| <img src="docs/images/pet.png" alt="Pet panel" width="320"> | **The pet** stays quiet until something needs you. It has six states: idle, busy, waiting for you, just finished, alert and paused. Its panel holds at most three "needs you" cards, such as a finished session or an overdue task, plus a quick input box. Press **Alt+Shift+D** anywhere to open it. When DSH isn't in front, Dot also sends system notifications |
+| <img src="docs/images/pet.png" alt="Pet panel" width="320"> | **The pet** lives on your desktop in DSH Desktop for Windows: it stays on top, snaps to a screen edge and slides away, yet it is still part of the plugin and quits with DSH (elsewhere it sits inside the DSH page). It stays quiet until something needs you. It has six states: idle, busy, waiting for you, just finished, alert and paused. Its panel holds at most three "needs you" cards, such as a finished session or an overdue task, plus a quick input box. Press **Alt+Shift+D** anywhere to open it. When DSH isn't in front, Dot also sends system notifications |
 | <img src="docs/images/overview.png" alt="Sessions overview" width="480"> | **Sessions overview** shows one card per session: status, todo progress, recent steps, changed files, context usage and where it's blocked. You can search everything ever said in any session, and open, stop, watch, relay a message to, file as a task, or archive (with undo) each one |
 | <img src="docs/images/tasks.png" alt="Tasks page" width="360"> | **The Dot panel** opens next to Dot sessions, with five pages: Today, Tasks, Schedule, Memory and Rules. On the Rules page you can try any tool call and see how the gate would treat it |
 
