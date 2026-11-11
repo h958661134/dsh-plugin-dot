@@ -136,7 +136,7 @@ test('dot_capture：一次落地事务、提醒、记忆', async () => {
   const { tools, schedule, store } = await setup()
   const r = await tools.dot_capture.execute({
     tasks: [{ title: '把报价单发给老王', due: '2026-11-13T18:00:00+08:00', priority: 'high' }, { title: '想年终总结' }],
-    reminders: [{ text: '喝水', at: '2026-11-10T15:00:00+08:00' }],
+    reminders: [{ text: '喝水', at: new Date(NOW.getTime() + 40 * 60_000).toISOString() }], // 相对 NOW，和机器时区无关
     memories: [{ text: '用户不吃辣', category: 'preference' }],
   }, { agent: { id: 'session-9' } })
   assert.match(r.summary, /把报价单发给老王/)
