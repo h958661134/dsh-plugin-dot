@@ -202,6 +202,19 @@ $MaxCards = 3
           <TextBlock x:Name="SummaryText" Margin="0,4,0,0" FontSize="12" Foreground="#6B7280" TextWrapping="Wrap"/>
           <TextBlock x:Name="HintText" Margin="0,4,0,0" FontSize="11" Foreground="#9CA3AF" TextWrapping="Wrap" Visibility="Collapsed"/>
           <StackPanel x:Name="Cards" Margin="0,8,0,0"/>
+          <StackPanel x:Name="TodoBox" Margin="0,0,0,10">
+            <DockPanel>
+              <Button x:Name="TodoAllBtn" DockPanel.Dock="Right" Style="{StaticResource Btn}" Background="Transparent" Margin="0" Padding="4,0" FontSize="11.5" Foreground="#6B7280" Content="全部待办 ›" ToolTip="把 DSH 拉到前台，打开 Dot 窗口看全部待办"/>
+              <TextBlock x:Name="TodoHead" Text="今天" FontSize="12" FontWeight="SemiBold" Foreground="#6B7280" VerticalAlignment="Center"/>
+            </DockPanel>
+            <StackPanel x:Name="TodoList" Margin="0,2,0,0"/>
+            <Border CornerRadius="8" Background="#F6F7F9" Padding="8,4" Margin="0,4,0,0">
+              <Grid>
+                <TextBlock x:Name="TodoPh" Text="＋ 记一件（明天9点 交周报 / 每周一9点 周会）" Foreground="#9CA3AF" FontSize="12" IsHitTestVisible="False" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                <TextBox x:Name="TodoInput" BorderThickness="0" Background="Transparent" FontSize="12" VerticalContentAlignment="Center" ToolTip="回车记下。没写时间的放进今天；用「；」分出小步骤"/>
+              </Grid>
+            </Border>
+          </StackPanel>
           <Border x:Name="ReplyBox" Visibility="Collapsed" Margin="0,0,0,8" CornerRadius="10" Padding="10,8" Background="#F5F7FF" BorderBrush="#DDE3FF" BorderThickness="1">
             <StackPanel>
               <DockPanel>
@@ -218,12 +231,15 @@ $MaxCards = 3
             <Button x:Name="SendBtn" DockPanel.Dock="Right" Style="{StaticResource Main}" Margin="6,0,0,0" Content="发送"/>
             <Border CornerRadius="8" BorderBrush="#D1D5DB" BorderThickness="1" Padding="6,3">
               <Grid>
-                <TextBlock x:Name="Placeholder" Text="跟 Dot 说一句，或输入 /task …" Foreground="#9CA3AF" FontSize="12.5" IsHitTestVisible="False" VerticalAlignment="Center"/>
+                <TextBlock x:Name="Placeholder" Text="跟 Dot 说一句，让它去办…" Foreground="#9CA3AF" FontSize="12.5" IsHitTestVisible="False" VerticalAlignment="Center"/>
                 <TextBox x:Name="Input" BorderThickness="0" Background="Transparent" FontSize="12.5" VerticalContentAlignment="Center"/>
               </Grid>
             </Border>
           </DockPanel>
-          <TextBlock x:Name="OutText" Margin="0,6,0,0" FontSize="12" TextWrapping="Wrap" Visibility="Collapsed"/>
+          <DockPanel x:Name="OutRow" Margin="0,6,0,0" Visibility="Collapsed">
+            <Button x:Name="UndoBtn" DockPanel.Dock="Right" Style="{StaticResource Btn}" Margin="6,0,0,0" Padding="8,1" FontSize="11.5" Content="撤销" Visibility="Collapsed" VerticalAlignment="Top"/>
+            <TextBlock x:Name="OutText" FontSize="12" TextWrapping="Wrap" VerticalAlignment="Center"/>
+          </DockPanel>
           <UniformGrid Columns="2" Margin="0,10,0,0">
             <Button x:Name="DotBtn" Style="{StaticResource Btn}" Margin="0,0,4,0" Padding="0,5" Content="打开 Dot" ToolTip="把 DSH 拉到前台，打开 Dot 会话（双击精灵也行）"/>
             <Button x:Name="SessBtn" Style="{StaticResource Btn}" Margin="4,0,0,0" Padding="0,5" Content="会话总览" ToolTip="把 DSH 拉到前台，打开会话总览"/>
@@ -238,7 +254,8 @@ $MaxCards = 3
 $window = [Windows.Markup.XamlReader]::Load((New-Object System.Xml.XmlNodeReader $xaml))
 $ui = @{}
 foreach ($n in 'Root', 'Pet', 'PetScale', 'PetRot', 'Bubble', 'BubbleText', 'Badge', 'BadgeText', 'EyeL', 'EyeR', 'Top', 'Bottom', 'Panel', 'CloseBtn', 'PauseBtn',
-  'NameText', 'SummaryText', 'HintText', 'Cards', 'ReplyBox', 'ReplyHead', 'ReplyText', 'ReplyOpenBtn', 'Quick', 'SendBtn', 'Placeholder', 'Input', 'OutText', 'DotBtn', 'SessBtn') {
+  'NameText', 'SummaryText', 'HintText', 'Cards', 'ReplyBox', 'ReplyHead', 'ReplyText', 'ReplyOpenBtn', 'Quick', 'SendBtn', 'Placeholder', 'Input', 'OutText', 'DotBtn', 'SessBtn',
+  'TodoBox', 'TodoHead', 'TodoList', 'TodoAllBtn', 'TodoPh', 'TodoInput', 'OutRow', 'UndoBtn') {
   $ui[$n] = $window.FindName($n)
 }
 function New-Brush([string]$hex) { New-Object Windows.Media.SolidColorBrush ([Windows.Media.ColorConverter]::ConvertFromString($hex)) }
@@ -427,12 +444,21 @@ function Focus-Dsh($op) {
 }
 
 # ── 面板 ──
-function Show-Out([string]$text, [bool]$isErr) {
-  if (-not $text) { $ui.OutText.Visibility = 'Collapsed'; return }
+# 一行回执；能撤销的操作（完成、推迟）旁边带「撤销」
+function Show-Out([string]$text, [bool]$isErr, $undo = $null) {
+  if (-not $text) { $ui.OutRow.Visibility = 'Collapsed'; $ui.UndoBtn.Tag = $null; return }
   $ui.OutText.Text = $text
   $ui.OutText.Foreground = New-Brush $(if ($isErr) { '#DC2626' } else { '#374151' })
-  $ui.OutText.Visibility = 'Visible'
+  $ui.UndoBtn.Tag = $undo
+  $ui.UndoBtn.Visibility = if ($undo -and $undo.post) { 'Visible' } else { 'Collapsed' }
+  $ui.OutRow.Visibility = 'Visible'
 }
+$ui.UndoBtn.Add_Click({
+  $u = $ui.UndoBtn.Tag
+  if (-not $u -or -not $u.post) { return }
+  $ui.UndoBtn.Visibility = 'Collapsed'
+  Send-Dot ([string]$u.post) $u.body 'On-OpDone' $null
+})
 function Open-Panel {
   $hideTimer.Stop(); Set-Hidden $false
   $ui.Bubble.Visibility = 'Collapsed'
@@ -461,11 +487,115 @@ function Run-Op($tag) {
   if ($op.post) { Send-Dot ([string]$op.post) $op.body 'On-OpDone' $tag.box }
 }
 function On-OpDone($r, $box) {
-  if ($r.text) { Show-Out ([string]$r.text) ($r.ok -eq $false) }
+  if ($r.text) { Show-Out ([string]$r.text) ($r.ok -eq $false) $r.undo }
   if ($r.ok -eq $false -and $box) { $box.Opacity = 1; $box.IsEnabled = $true }
   $script:forceCards = $true
   Refresh
 }
+
+# ── 今天的待办：勾掉、推到明天、一句话记一件（不调模型）──
+$script:todosKey = ''
+function Render-Todos([bool]$force) {
+  $desk = $script:desk
+  if (-not $desk) { return }
+  $todos = @($desk.todos)
+  $more = [int]$desk.todoMore
+  $inbox = [int]$desk.inbox
+  $key = (($todos | ForEach-Object { "$($_.id)|$($_.title)|$($_.sub)" }) -join "`n") + "|$more|$inbox"
+  if (-not $force -and -not $script:forceCards -and $key -eq $script:todosKey) { return }
+  if (-not $force -and $ui.TodoList.IsMouseOver) { return }
+  $script:todosKey = $key
+  $ui.TodoHead.Text = if ($todos.Count -or $more) { "今天 · $($todos.Count + $more) 件" + $(if ($inbox) { "　收件箱 $inbox" } else { '' }) } else { '今天' + $(if ($inbox) { " · 收件箱还有 $inbox 件没定时间" } else { '' }) }
+  $ui.TodoList.Children.Clear()
+  foreach ($t in $todos) {
+    $row = New-Object Windows.Controls.DockPanel
+    $row.Margin = '0,3,0,0'; $row.Background = New-Brush '#00FFFFFF'
+    # 提醒我 / 改时间（悬停时显示）：点开一个小菜单，一下选好
+    $later = New-Object Windows.Controls.Button
+    $later.Content = [string][char]0x23F0; $later.Style = $window.FindResource('Btn'); $later.Background = New-Brush '#00FFFFFF'
+    $later.Margin = '4,0,0,0'; $later.Padding = '4,0'; $later.Foreground = New-Brush '#9CA3AF'; $later.Opacity = 0
+    $later.ToolTip = if ($t.sub) { '改时间' } else { '提醒我' }
+    $menu = New-Object Windows.Controls.ContextMenu
+    foreach ($p in @(@('30m', '半小时后'), @('1h', '1 小时后'), @('offwork', '下班前'), @('tonight', '今晚 8 点'), @('tomorrow', '明早 9 点'), @('weekend', '周末'))) {
+      $mi = New-Object Windows.Controls.MenuItem
+      $mi.Header = $p[1]
+      $mi.Tag = @{ op = @{ post = '/task'; body = @{ id = [string]$t.id; action = 'snooze'; to = $p[0] } }; box = $row }
+      $mi.Add_Click({ param($sender, $e) Run-Op $sender.Tag })
+      [void]$menu.Items.Add($mi)
+    }
+    $later.ContextMenu = $menu
+    $later.Add_Click({ param($sender, $e) $sender.ContextMenu.PlacementTarget = $sender; $sender.ContextMenu.IsOpen = $true })
+    [Windows.Controls.DockPanel]::SetDock($later, 'Right')
+    [void]$row.Children.Add($later)
+    $row.Tag = $later
+    $row.Add_MouseEnter({ param($sender, $e) $sender.Tag.Opacity = 1 })
+    $row.Add_MouseLeave({ param($sender, $e) $sender.Tag.Opacity = 0 })
+    # 圆圈：点了就划掉
+    $check = New-Object Windows.Controls.Button
+    $check.Style = $window.FindResource('Btn'); $check.Background = New-Brush '#00FFFFFF'; $check.Padding = '0'; $check.Margin = '0,1,8,0'
+    $check.VerticalAlignment = 'Top'; $check.ToolTip = '完成（可撤销）'
+    $ring = New-Object Windows.Controls.Border
+    $ring.Width = 15; $ring.Height = 15; $ring.CornerRadius = 8; $ring.BorderThickness = 1.6
+    $ring.BorderBrush = New-Brush $(if ($t.overdue) { '#EF4444' } elseif ($t.high) { '#F59E0B' } else { '#9CA3AF' })
+    $check.Content = $ring
+    [Windows.Controls.DockPanel]::SetDock($check, 'Left')
+    [void]$row.Children.Add($check)
+    $text = New-Object Windows.Controls.StackPanel
+    $title = New-Object Windows.Controls.TextBlock
+    $title.Text = [string]$t.title; $title.FontSize = 12.5; $title.TextTrimming = 'CharacterEllipsis'; $title.ToolTip = [string]$t.title
+    $title.Foreground = New-Brush $(if ($t.high) { '#B45309' } else { '#111827' })
+    [void]$text.Children.Add($title)
+    if ($t.sub) {
+      $sub = New-Object Windows.Controls.TextBlock
+      $sub.Text = [string]$t.sub; $sub.FontSize = 11; $sub.Foreground = New-Brush $(if ($t.overdue) { '#DC2626' } else { '#9CA3AF' })
+      [void]$text.Children.Add($sub)
+    }
+    [void]$row.Children.Add($text)
+    $check.Tag = @{ id = [string]$t.id; ring = $ring; title = $title; row = $row }
+    $check.Add_Click({ param($sender, $e) Check-Todo $sender.Tag })
+    [void]$ui.TodoList.Children.Add($row)
+  }
+  if ($more -gt 0) {
+    $m = New-Object Windows.Controls.TextBlock
+    $m.Text = "还有 $more 件，点「全部待办」看"; $m.FontSize = 11; $m.Foreground = New-Brush '#9CA3AF'; $m.Margin = '23,3,0,0'
+    [void]$ui.TodoList.Children.Add($m)
+  }
+  if (-not $todos.Count -and -not $more) {
+    $e = New-Object Windows.Controls.TextBlock
+    $e.Text = '今天没有排上的事。在下面记一件，或者把文字拖到我身上。'; $e.FontSize = 11.5; $e.Foreground = New-Brush '#9CA3AF'; $e.TextWrapping = 'Wrap'; $e.Margin = '0,2,0,0'
+    [void]$ui.TodoList.Children.Add($e)
+  }
+}
+function Check-Todo($tag) {
+  # 先在界面上划掉（圆圈变绿、标题加删除线），再提交；失败了 On-OpDone 会恢复
+  $tag.ring.Background = New-Brush '#22C55E'; $tag.ring.BorderBrush = New-Brush '#22C55E'
+  $tag.title.TextDecorations = [Windows.TextDecorations]::Strikethrough
+  $tag.title.Foreground = New-Brush '#9CA3AF'
+  $tag.row.IsEnabled = $false
+  Squash 1
+  Send-Dot '/task' @{ id = $tag.id; action = 'done' } 'On-OpDone' $tag.row
+}
+function Add-Todo {
+  $text = $ui.TodoInput.Text.Trim()
+  if (-not $text) { return }
+  $ui.TodoInput.IsEnabled = $false
+  Send-Dot '/task' @{ action = 'add'; text = $text; today = $true } 'On-TodoAdded' $null
+}
+function On-TodoAdded($r, $state) {
+  $ui.TodoInput.IsEnabled = $true
+  if ($r.ok -ne $false) { $ui.TodoInput.Text = ''; Bounce }
+  Show-Out ([string]$r.text) ($r.ok -eq $false)
+  [void]$ui.TodoInput.Focus()
+  $script:forceCards = $true
+  Refresh
+}
+$ui.TodoInput.Add_PreviewKeyDown({
+  param($s, $e)
+  if ($e.Key -eq 'Return') { $e.Handled = $true; Add-Todo }
+  elseif ($e.Key -eq 'Escape') { $e.Handled = $true; Close-Panel }
+})
+$ui.TodoInput.Add_TextChanged({ $ui.TodoPh.Visibility = if ($ui.TodoInput.Text) { 'Collapsed' } else { 'Visible' } })
+$ui.TodoAllBtn.Add_Click({ Focus-Dsh ([pscustomobject]@{ nav = 'tasks' }) })
 
 # ── 说话：斜杠指令在本地执行；其余交给 Dot，回复直接显示在面板里 ──
 $script:history = New-Object System.Collections.ArrayList
@@ -520,7 +650,7 @@ $ui.DotBtn.Add_Click({ Focus-Dsh ([pscustomobject]@{ nav = 'dot' }) })
 $ui.SessBtn.Add_Click({ Focus-Dsh ([pscustomobject]@{ nav = 'sessions' }) })
 $ui.ReplyOpenBtn.Add_Click({ Focus-Dsh ([pscustomobject]@{ nav = 'dot' }) })
 # 快捷按钮：「!」开头的直接发，其余填进输入框
-foreach ($q in @(@('记一件事', '/task '), @('设个提醒', '/remind '), @('今日简报', '!/brief'), @('能做什么', '!/dot'))) {
+foreach ($q in @(@('设个提醒', '/remind '), @('今日简报', '!/brief'), @('整理会话名', '!帮我整理一下会话的名字：用 dot_sessions list 找出名字待整理的，读一下在做什么，起好名字用 rename 提给我确认'), @('能做什么', '!/dot'))) {
   $b = New-Object Windows.Controls.Button
   $b.Content = $q[0]; $b.Style = $window.FindResource('Btn'); $b.Margin = '0,0,6,6'; $b.Tag = $q[1]
   $b.Add_Click({
@@ -546,9 +676,10 @@ $ui.Root.Add_Drop({
   }
   if (-not $text) { return }
   Open-Panel
-  $ui.Input.Text = "/task $text"
-  $ui.Input.CaretIndex = $ui.Input.Text.Length
-  Show-Out '回车就记下；想设时间，在 /task 后面加，比如「/task 明天10点 …」' $false
+  $ui.TodoInput.Text = $text
+  [void]$ui.TodoInput.Focus()
+  $ui.TodoInput.CaretIndex = $ui.TodoInput.Text.Length
+  Show-Out '回车就记成今天的待办；想设时间，在前面加，比如「明天10点 …」' $false
 })
 
 # 卡片：内容变了才重建；鼠标停在卡片上时先不动（重建会吞掉点击）
@@ -560,6 +691,7 @@ $kindBorders = @{ approval = '#FCD34D'; question = '#FCD34D'; overdue = '#FCA5A5
 function Render-Cards([bool]$force) {
   $desk = $script:desk
   if (-not $desk) { return }
+  Render-Todos $force
   $cards = @($desk.cards)
   $key = ($cards | ForEach-Object { "$($_.key)|$($_.body)" }) -join "`n"
   if (-not $force -and -not $script:forceCards -and $key -eq $script:cardsKey) { return }

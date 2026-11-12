@@ -86,8 +86,12 @@
             name: '@deepseek-ai/dsh-tool-todo'
             config:
               allowParallelInProgress: true
+          # 网页搜索 / 抓取依赖宿主的 web 服务。有的 DSH 组合（比如桌面版）不带 web 服务，
+          # 这一行硬挂上去会一直「waiting for web」，整个 Dot 预设被标成 broken、从新建会话菜单消失。
+          # 所以只在宿主组合里有启用的 web 服务行时才启用；看的是组合本身，不受启动先后影响。
           - id: tool-web
             name: '@deepseek-ai/dsh-tool-web'
+            disabled: !!js "!(ctx.loader && [...ctx.loader.entries()].some(e => e.options.name === '@deepseek-ai/dsh-web' && !e.disabled))"
             config:
               fetch: true
               searchTimeoutMs: 60000

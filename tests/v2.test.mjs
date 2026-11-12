@@ -94,24 +94,31 @@ test('/done 完成事务并删除提醒，浮标显示完成', async () => {
   assert.match(pet.bubble, /交周报/)
 })
 
-test('/remind：能解析就建提醒，不能解析就交给模型', async () => {
-  const { run, schedule, followups } = await setup()
+test('/remind：有时间就记成待办并到点提醒；没写时间也照记，放进今天、不打扰、不交给模型', async () => {
+  const { run, schedule, followups, store } = await setup()
   const ok = await run('remind', '30分钟后 喝水')
   assert.match(ok.text, /提醒你：喝水/)
   assert.equal(schedule.created.length, 1)
-  const fallback = await run('remind', '等老王回我的时候')
-  assert.match(fallback.text, /交给 Dot/)
-  assert.equal(followups.length, 1)
-  assert.equal(followups[0].content[0].text, '提醒我：等老王回我的时候')
-  assert.equal(followups[0].role, 'user')
+  assert.equal(store.snapshot().tasks[0].title, '喝水') // 提醒就是带时间的待办，能在清单里勾掉
+  const plain = await run('remind', '精细化插件使用')
+  assert.equal(plain.kind, 'success')
+  assert.match(plain.text, /记进今天的待办了：精细化插件使用/)
+  assert.match(plain.text, /\/due t2 1小时后/)
+  assert.equal(schedule.created.length, 1) // 没写时间：不建提醒
+  assert.equal(followups.length, 0) // 也不交给模型去猜
+  const t2 = store.snapshot().tasks.find(t => t.id === 't2')
+  assert.equal(t2?.due, null)
+  assert.ok(t2?.today)
 })
 
-test('/remind 没有会话时新开 Dot 会话投递；没有 agent 时看不懂就报错', async () => {
+test('/remind 没有会话时新开 Dot 会话投递；看不懂的时间也不报错，先记下', async () => {
   const { handlers, schedule } = await setup()
   const r = await handlers.remind.run('明早8点 跑步', undefined)
   assert.equal(r.kind, 'success')
   assert.deepEqual(schedule.created[0].req.target, { kind: 'new_once', create: { agentPreset: 'dot' } })
-  assert.equal((await handlers.remind.run('改天吧', undefined)).kind, 'error')
+  const later = await handlers.remind.run('改天吧', undefined)
+  assert.equal(later.kind, 'success')
+  assert.match(later.text, /记进今天的待办了：改天吧/)
 })
 
 test('/note /tasks /rules /dot /brief', async () => {

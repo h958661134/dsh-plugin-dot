@@ -297,7 +297,8 @@ test('总览接口：/sessions/search 搜所有会话；/session relay 直接送
   const ag = id => ({ id, session: { id, preset: 'standard', header: { delegationDepth: 0 } } })
   listeners['agent/status']({ agent: ag('w2'), status: 'running' })
   const r = await call(routes['/api/dsh-plugin-dot/session'], { id: 'w2', action: 'relay', text: '顺便跑一下测试' })
-  assert.equal(r.text, '已转告「未命名会话」')
+  // 还没有标题、也读不到第一句话：用「新会话 · 时:分」占位，不再显示「未命名会话」
+  assert.match(r.text, /^已转告「新会话 · \d\d:\d\d」$/)
   assert.match(JSON.stringify(sent[0]), /（Dot 代你转告）顺便跑一下测试/)
   assert.equal((await call(routes['/api/dsh-plugin-dot/session'], { id: 'w2', action: 'relay', text: ' ' })).ok, false)
   assert.match((await call(routes['/api/dsh-plugin-dot/session'], { id: 'w2', action: 'archive' })).text, /正在跑/)

@@ -34,7 +34,7 @@ test('桌面精灵卡片：顺序、按钮和网页小精灵一致', () => {
   assert.deepEqual(cards[1].buttons[0].op, { open: 'w1', post: '/notice', body: { id: 'n1' } })
   assert.deepEqual(cards[2].buttons.map(b => b.label), ['记为事务', '我做完了', '知道了'])
   assert.deepEqual(cards[3].buttons[0].op, { post: '/task', body: { id: 't1', action: 'done' } })
-  assert.deepEqual(cards[3].buttons[1].op, { post: '/say', body: { text: '/due t1 30分钟后' } })
+  assert.deepEqual(cards[3].buttons[1].op, { post: '/task', body: { id: 't1', action: 'snooze', to: '1h' } })
   assert.equal(cards[4].body, '还有 10 分钟')
   assert.equal(cards[5].title, 'Dot 有 2 个建议')
   assert.deepEqual(cards[5].buttons[0].op, { nav: 'dot' })
