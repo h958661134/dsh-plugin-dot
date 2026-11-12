@@ -23,7 +23,7 @@ Once you use DeepSeek Harness (DSH) for real work, things scatter: a deadline me
 
 Dot is a DSH plugin. It adds a **Dot** agent preset and a small on-screen pet:
 
-- Anything you mention in passing gets recorded, reminded on time, and closed out when it's done.
+- Anything you mention in passing gets recorded, even without a time; it reminds you only when you gave one, and closing it is one click (with undo).
 - It keeps an eye on all your other sessions and tells you which one finished, which one is stuck, and which one is waiting for you.
 - Anything that speaks for you, spends money, goes outside, or can't be undone is only drafted. Nothing happens until you click.
 
@@ -58,9 +58,9 @@ Desktop users can add the folder from the **Plugins** page instead. Then **quit 
 
 | | |
 |---|---|
-| <img src="docs/images/pet.png" alt="Pet panel" width="320"> | **The pet** lives on your desktop in DSH Desktop for Windows: it stays on top, snaps to a screen edge and slides away, yet it is still part of the plugin and quits with DSH (elsewhere it sits inside the DSH page). It stays quiet until something needs you. It has six states: idle, busy, waiting for you, just finished, alert and paused. Its panel holds at most three "needs you" cards, such as a finished session or an overdue task, plus a quick input box. Press **Alt+Shift+D** anywhere to open it. When DSH isn't in front, Dot also sends system notifications |
-| <img src="docs/images/overview.png" alt="Sessions overview" width="480"> | **Sessions overview** shows one card per session: status, todo progress, recent steps, changed files, context usage and where it's blocked. You can search everything ever said in any session, and open, stop, watch, relay a message to, file as a task, or archive (with undo) each one |
-| <img src="docs/images/tasks.png" alt="Tasks page" width="360"> | **The Dot panel** opens next to Dot sessions, with five pages: Today, Tasks, Schedule, Memory and Rules. On the Rules page you can try any tool call and see how the gate would treat it |
+| <img src="docs/images/pet.png" alt="Pet panel" width="320"> | **The pet** lives on your desktop in DSH Desktop for Windows: it stays on top, snaps to a screen edge and slides away, yet it is still part of the plugin and quits with DSH (elsewhere it sits inside the DSH page). It stays quiet until something needs you. It has six states: idle, busy, waiting for you, just finished, alert and paused. Its panel holds at most three "needs you" cards, such as a finished session or an overdue task, a **Today** list you can tick off or push to tomorrow, and a quick input box. Press **Alt+Shift+D** anywhere to open it. When DSH isn't in front, Dot also sends system notifications |
+| <img src="docs/images/overview.png" alt="Sessions overview" width="480"> | **Sessions overview** shows one card per session: status, todo progress, recent steps, changed files, context usage and where it's blocked. You can search everything ever said in any session, and open, stop, watch, relay a message to, file as a task, or archive (with undo) each one. No more "untitled session": until DSH generates a title, the first message stands in. Unclear names (missing, too generic, duplicated, too long) are flagged; rename with ✎, or let Dot read the sessions and propose names that apply only when you click (with undo) |
+| <img src="docs/images/tasks.png" alt="Tasks page" width="360"> | **The Dot panel** opens next to Dot sessions, with five pages: Today, Todos, Schedule, Memory and Rules. Todos are grouped into overdue, today, upcoming, inbox and waiting on others, with steps, repeats, snooze presets and "hand to Dot"; done, dropped and snoozed can all be undone (see [docs/TODO.md](docs/TODO.md), in Chinese). On the Rules page you can try any tool call and see how the gate would treat it |
 
 ## Talking to Dot
 
@@ -68,11 +68,14 @@ Desktop users can add the folder from the **Plugins** page instead. Then **quit 
 |---|---|
 | "Fix the contract before next Tuesday, remind me a day early, it's urgent" | A high-priority task due Tuesday, plus a reminder on Monday |
 | "I don't drink coffee; no meetings right after lunch" | Two long-term memories, used when planning |
+| "Remind me to polish the plugin" (no time) | Puts it on today's list without asking for a time; add one later if you want a reminder |
+| "Team meeting every Monday at 9" | A repeating todo; ticking it off schedules the next one |
 | "The quote has been sent" | Marks the task done and removes its reminder |
 | "What's on today?" | A brief: due today, overdue, waiting, delegated, and what your other sessions did |
 | "Research pricing for three competitors and make a table" | Files a task and hands it to a sub-agent; you see progress in the panel and get the conclusion at the end |
 | "Where are my sessions at?" | Reads each session's recent turns and reports one line per session |
 | "Start a new session to finish the tests and tell me when done" | Drafts a brief; once you click **Start**, it opens the session and watches it |
+| "Tidy up my session names" | Reads each unclearly named session and proposes names; nothing changes until you click |
 
 Slash commands such as `/task 周五18点 交周报 !高`, `/remind 30分钟后 喝水` and `/every 工作日18点 写日报` run locally and cost no tokens. See [the reference](docs/FEATURES.md) for the full list (in Chinese).
 
@@ -103,6 +106,8 @@ Everything is stored in `$DSH_HOME/dot/state.json`, a plain JSON file on your ma
 <summary><b>I installed it but Dot isn't in the preset menu</b></summary>
 
 DSH loads plugins only at startup. Quit DSH completely and start it again. You can also check with `dsh plugin --profile web list`.
+
+DSH also hides a preset when one of its rows fails to start. If the Dot panel shows a warning that the Dot preset can't load, expand **原因** (reason) to see which row. Version 1.1.0 and earlier hit this on DSH builds without a web service, because the web tool waited for it forever; this is fixed, and the web tool now switches itself off when there is no web service.
 </details>
 
 <details>
@@ -123,6 +128,8 @@ Only by reading their status for the overview. Stop, relay and archive happen on
 - [x] Pet, Dot panel, sub-agent monitoring
 - [x] Suggestion inbox, learning from corrections
 - [x] Session dispatch desk: search, read, relay, dispatch, tidy up
+- [x] Todos: groups, steps, repeats, waiting on others, snooze, hand to Dot, all undoable
+- [x] Session names: temporary titles, renames proposed by Dot
 - [ ] Sessions grouped by project (working directory)
 - [ ] Weekly report
 - [ ] English UI
@@ -130,7 +137,7 @@ Only by reading their status for the overview. Stop, relay and archive happen on
 ## Development
 
 ```bash
-npm test   # 123 tests on node:test, no install needed
+npm test   # 150+ tests on node:test, no install needed
 ```
 
 Plain JavaScript ESM with `@ts-check`, with no build step and no runtime dependency on `@deepseek-ai/*` packages. See [CONTRIBUTING.md](CONTRIBUTING.md).
