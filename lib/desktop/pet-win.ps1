@@ -163,7 +163,7 @@ $Margin = 8
 $WinW = 360            # 窗口固定大小：透明部分点击会穿透，不挡桌面
 $WinH = $StageH
 $WalkRange = 240       # 在任务栏上溜达，离「家」最远多少
-$PanelW = 312
+$PanelW = 340
 $MaxCards = 3
 
 [xml]$xaml = @"
@@ -173,23 +173,24 @@ $MaxCards = 3
         Topmost="True" ShowInTaskbar="False" ResizeMode="NoResize"
         Width="$WinW" Height="$WinH" Title="Dot" FontFamily="Microsoft YaHei UI">
   <Window.Resources>
+    <!-- 普通按钮：浅灰底，悬停加深 -->
     <Style x:Key="Btn" TargetType="Button">
-      <Setter Property="Background" Value="#F2F3F5"/>
+      <Setter Property="Background" Value="#F2F4F7"/>
       <Setter Property="Foreground" Value="#1F2937"/>
       <Setter Property="BorderThickness" Value="0"/>
-      <Setter Property="Padding" Value="9,3"/>
+      <Setter Property="Padding" Value="10,4"/>
       <Setter Property="Margin" Value="0,0,6,0"/>
       <Setter Property="FontSize" Value="12"/>
       <Setter Property="Cursor" Value="Hand"/>
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="Button">
-            <Border x:Name="B" Background="{TemplateBinding Background}" CornerRadius="7" Padding="{TemplateBinding Padding}">
+            <Border x:Name="B" Background="{TemplateBinding Background}" CornerRadius="8" Padding="{TemplateBinding Padding}">
               <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </Border>
             <ControlTemplate.Triggers>
-              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="B" Property="Opacity" Value="0.82"/></Trigger>
-              <Trigger Property="IsPressed" Value="True"><Setter TargetName="B" Property="Opacity" Value="0.65"/></Trigger>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="B" Property="Opacity" Value="0.86"/></Trigger>
+              <Trigger Property="IsPressed" Value="True"><Setter TargetName="B" Property="Opacity" Value="0.7"/></Trigger>
               <Trigger Property="IsEnabled" Value="False"><Setter TargetName="B" Property="Opacity" Value="0.45"/></Trigger>
             </ControlTemplate.Triggers>
           </ControlTemplate>
@@ -199,6 +200,141 @@ $MaxCards = 3
     <Style x:Key="Main" TargetType="Button" BasedOn="{StaticResource Btn}">
       <Setter Property="Background" Value="#4D6BFE"/>
       <Setter Property="Foreground" Value="White"/>
+    </Style>
+    <!-- 透明按钮：悬停才出底色（图标按钮、文字链接、底栏按钮都用它） -->
+    <Style x:Key="Ghost" TargetType="Button">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="Foreground" Value="#6B7280"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="Padding" Value="6,3"/>
+      <Setter Property="FontSize" Value="12"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="B" Background="{TemplateBinding Background}" CornerRadius="8" Padding="{TemplateBinding Padding}">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="B" Property="Background" Value="#EEF0F4"/><Setter Property="Foreground" Value="#111827"/></Trigger>
+              <Trigger Property="IsPressed" Value="True"><Setter TargetName="B" Property="Background" Value="#E3E6EC"/></Trigger>
+              <Trigger Property="IsEnabled" Value="False"><Setter TargetName="B" Property="Opacity" Value="0.45"/></Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <Style x:Key="IconBtn" TargetType="Button" BasedOn="{StaticResource Ghost}">
+      <Setter Property="FontFamily" Value="Segoe Fluent Icons, Segoe MDL2 Assets"/>
+      <Setter Property="FontSize" Value="12"/>
+      <Setter Property="Width" Value="28"/>
+      <Setter Property="Height" Value="28"/>
+      <Setter Property="Padding" Value="0"/>
+    </Style>
+    <!-- 快捷短语：描边小标签 -->
+    <Style x:Key="Chip" TargetType="Button">
+      <Setter Property="Background" Value="White"/>
+      <Setter Property="Foreground" Value="#4B5563"/>
+      <Setter Property="FontSize" Value="11.5"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Margin" Value="0,0,6,6"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="B" Background="{TemplateBinding Background}" BorderBrush="#E5E7EB" BorderThickness="1" CornerRadius="11" Padding="9,2">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="B" Property="Background" Value="#F5F7FF"/><Setter TargetName="B" Property="BorderBrush" Value="#C7D2FE"/><Setter Property="Foreground" Value="#3B55E6"/></Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <Style x:Key="Sec" TargetType="TextBlock">
+      <Setter Property="FontSize" Value="11.5"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Foreground" Value="#6B7280"/>
+      <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+    <!-- 菜单分隔线：要显式指定，否则菜单会套系统默认样式（左边缩进一大截） -->
+    <Style x:Key="Sep" TargetType="Separator">
+      <Setter Property="Margin" Value="0"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Separator"><Border Height="1" Background="#EEF0F3" Margin="8,4"/></ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <Style x:Key="Glyph" TargetType="TextBlock">
+      <Setter Property="FontFamily" Value="Segoe Fluent Icons, Segoe MDL2 Assets"/>
+      <Setter Property="FontSize" Value="13"/>
+      <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+    <!-- 右键菜单：圆角白卡片，每项有图标，悬停整行高亮；子菜单同样式 -->
+    <Style x:Key="Menu" TargetType="ContextMenu">
+      <Setter Property="OverridesDefaultStyle" Value="True"/>
+      <Setter Property="SnapsToDevicePixels" Value="True"/>
+      <Setter Property="HasDropShadow" Value="False"/>
+      <Setter Property="FontFamily" Value="Microsoft YaHei UI"/>
+      <Setter Property="FontSize" Value="12.5"/>
+      <Setter Property="Foreground" Value="#1F2937"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="ContextMenu">
+            <Border Margin="12" Padding="5" CornerRadius="12" Background="White" BorderBrush="#16000000" BorderThickness="1" MinWidth="196">
+              <Border.Effect><DropShadowEffect BlurRadius="22" ShadowDepth="4" Opacity="0.16"/></Border.Effect>
+              <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Cycle"/>
+            </Border>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+      <Style.Resources>
+        <Style TargetType="Separator">
+          <Setter Property="Margin" Value="0"/>
+          <Setter Property="Template">
+            <Setter.Value>
+              <ControlTemplate TargetType="Separator"><Border Height="1" Background="#EEF0F3" Margin="8,4"/></ControlTemplate>
+            </Setter.Value>
+          </Setter>
+        </Style>
+        <Style TargetType="MenuItem">
+          <Setter Property="Foreground" Value="#1F2937"/>
+          <Setter Property="Cursor" Value="Hand"/>
+          <Setter Property="Template">
+            <Setter.Value>
+              <ControlTemplate TargetType="MenuItem">
+                <Border x:Name="Bd" Background="Transparent" CornerRadius="7" Padding="9,0,8,0" Height="32" SnapsToDevicePixels="True">
+                  <Grid>
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="26"/>
+                      <ColumnDefinition Width="*"/>
+                      <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <ContentPresenter ContentSource="Icon" VerticalAlignment="Center" HorizontalAlignment="Left"/>
+                    <ContentPresenter Grid.Column="1" ContentSource="Header" VerticalAlignment="Center" RecognizesAccessKey="True"/>
+                    <TextBlock x:Name="Chk" Grid.Column="2" Text="&#xE73E;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="12" Foreground="#4D6BFE" VerticalAlignment="Center" Margin="14,0,2,0" Visibility="Collapsed"/>
+                    <TextBlock x:Name="Arrow" Grid.Column="2" Text="&#xE76C;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="10" Foreground="#9CA3AF" VerticalAlignment="Center" Margin="14,0,2,0" Visibility="Collapsed"/>
+                    <Popup x:Name="PART_Popup" Placement="Right" HorizontalOffset="-4" VerticalOffset="-17" AllowsTransparency="True" Focusable="False" PopupAnimation="Fade"
+                           IsOpen="{Binding IsSubmenuOpen, RelativeSource={RelativeSource TemplatedParent}}">
+                      <Border Margin="12" Padding="5" CornerRadius="12" Background="White" BorderBrush="#16000000" BorderThickness="1" MinWidth="150">
+                        <Border.Effect><DropShadowEffect BlurRadius="22" ShadowDepth="4" Opacity="0.16"/></Border.Effect>
+                        <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Cycle"/>
+                      </Border>
+                    </Popup>
+                  </Grid>
+                </Border>
+                <ControlTemplate.Triggers>
+                  <Trigger Property="IsHighlighted" Value="True"><Setter TargetName="Bd" Property="Background" Value="#F1F3F7"/></Trigger>
+                  <Trigger Property="IsChecked" Value="True"><Setter TargetName="Chk" Property="Visibility" Value="Visible"/></Trigger>
+                  <Trigger Property="HasItems" Value="True"><Setter TargetName="Arrow" Property="Visibility" Value="Visible"/></Trigger>
+                  <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.45"/></Trigger>
+                </ControlTemplate.Triggers>
+              </ControlTemplate>
+            </Setter.Value>
+          </Setter>
+        </Style>
+      </Style.Resources>
     </Style>
   </Window.Resources>
   <Grid x:Name="Root" HorizontalAlignment="Right" VerticalAlignment="Bottom" Background="Transparent" AllowDrop="True">
@@ -292,80 +428,122 @@ $MaxCards = 3
       <Canvas x:Name="Fx" IsHitTestVisible="False"/>
     </Grid>
     <Popup x:Name="Panel" PlacementTarget="{Binding ElementName=Pet}" Placement="Top" StaysOpen="False"
-           AllowsTransparency="True" PopupAnimation="Fade" VerticalOffset="-6">
-      <Border Width="$PanelW" Margin="10" CornerRadius="14" Background="White" BorderBrush="#1A000000" BorderThickness="1">
-        <Border.Effect><DropShadowEffect BlurRadius="18" ShadowDepth="3" Opacity="0.22"/></Border.Effect>
-        <StackPanel Margin="14,12,14,12">
-          <DockPanel>
-            <Button x:Name="CloseBtn" DockPanel.Dock="Right" Style="{StaticResource Btn}" Background="Transparent" Margin="0" Padding="6,2" Content="✕" ToolTip="收起（Esc）"/>
-            <Button x:Name="PauseBtn" DockPanel.Dock="Right" Style="{StaticResource Btn}" Content="暂停" ToolTip="暂停或恢复 Dot 的定时任务和有副作用的操作"/>
-            <TextBlock x:Name="NameText" Text="Dot" FontSize="15" FontWeight="Bold" Foreground="#111827" VerticalAlignment="Center"/>
-          </DockPanel>
-          <TextBlock x:Name="SummaryText" Margin="0,4,0,0" FontSize="12" Foreground="#6B7280" TextWrapping="Wrap"/>
-          <TextBlock x:Name="StatsText" Margin="0,2,0,0" FontSize="11.5" Foreground="#9CA3AF" TextWrapping="Wrap" Cursor="Hand" ToolTip="点开看今天按小时的统计"/>
-          <Border x:Name="StatsBox" Visibility="Collapsed" Margin="0,8,0,0" CornerRadius="10" Padding="10,8" Background="#F8FAFC" BorderBrush="#E5E7EB" BorderThickness="1">
-            <StackPanel>
-              <DockPanel>
-                <Button x:Name="KeysBtn" DockPanel.Dock="Right" Style="{StaticResource Btn}" Margin="0" Padding="7,1" FontSize="11"/>
-                <TextBlock Text="今天" FontSize="12" FontWeight="SemiBold" Foreground="#374151" VerticalAlignment="Center"/>
-              </DockPanel>
-              <Canvas x:Name="StatsBars" Height="46" Margin="0,8,0,0"/>
-              <Grid Margin="0,2,0,0">
-                <TextBlock Text="0" FontSize="10" Foreground="#9CA3AF" HorizontalAlignment="Left"/>
-                <TextBlock Text="12" FontSize="10" Foreground="#9CA3AF" HorizontalAlignment="Center"/>
-                <TextBlock Text="24 时" FontSize="10" Foreground="#9CA3AF" HorizontalAlignment="Right"/>
-              </Grid>
-              <TextBlock x:Name="StatsNote" Margin="0,6,0,0" FontSize="11" Foreground="#6B7280" TextWrapping="Wrap"/>
+           AllowsTransparency="True" PopupAnimation="Fade" VerticalOffset="-4">
+      <Border Width="$PanelW" Margin="14" CornerRadius="16" Background="White" BorderBrush="#14000000" BorderThickness="1">
+        <Border.Effect><DropShadowEffect BlurRadius="26" ShadowDepth="5" Opacity="0.16"/></Border.Effect>
+        <StackPanel>
+          <!-- 头部：小头像、名字、一句概况；右边暂停和收起 -->
+          <DockPanel Margin="16,14,10,0">
+            <Button x:Name="CloseBtn" DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Content="&#xE711;" ToolTip="收起（Esc）"/>
+            <Button x:Name="PauseBtn" DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Content="&#xE769;" ToolTip="暂停或恢复 Dot 的定时任务和有副作用的操作"/>
+            <Border Width="32" Height="32" CornerRadius="11" Margin="0,0,10,0" VerticalAlignment="Center">
+              <Border.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                  <GradientStop x:Name="AvTop" Color="#8AA2FF" Offset="0"/>
+                  <GradientStop x:Name="AvBottom" Color="#4D6BFE" Offset="1"/>
+                </LinearGradientBrush>
+              </Border.Background>
+              <Canvas Width="32" Height="32">
+                <Rectangle Canvas.Left="10" Canvas.Top="11" Width="3.6" Height="8" RadiusX="1.8" RadiusY="1.8" Fill="White"/>
+                <Rectangle Canvas.Left="18.4" Canvas.Top="11" Width="3.6" Height="8" RadiusX="1.8" RadiusY="1.8" Fill="White"/>
+              </Canvas>
+            </Border>
+            <StackPanel VerticalAlignment="Center">
+              <TextBlock x:Name="NameText" Text="Dot" FontSize="14.5" FontWeight="SemiBold" Foreground="#111827"/>
+              <TextBlock x:Name="SummaryText" Margin="0,1,0,0" FontSize="11.5" Foreground="#6B7280" TextWrapping="Wrap" MaxHeight="34" TextTrimming="CharacterEllipsis"/>
             </StackPanel>
-          </Border>
-          <DockPanel x:Name="FocusRow" Visibility="Collapsed" Margin="0,8,0,0">
-            <Button x:Name="FocusStopBtn" DockPanel.Dock="Right" Style="{StaticResource Btn}" Margin="6,0,0,0" Padding="8,1" FontSize="11.5" Content="停止"/>
-            <TextBlock x:Name="FocusText" FontSize="12" Foreground="#0F6E56" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
           </DockPanel>
-          <TextBlock x:Name="HintText" Margin="0,4,0,0" FontSize="11" Foreground="#9CA3AF" TextWrapping="Wrap" Visibility="Collapsed"/>
-          <StackPanel x:Name="Cards" Margin="0,8,0,0"/>
-          <StackPanel x:Name="TodoBox" Margin="0,0,0,10">
-            <DockPanel>
-              <Button x:Name="TodoAllBtn" DockPanel.Dock="Right" Style="{StaticResource Btn}" Background="Transparent" Margin="0" Padding="4,0" FontSize="11.5" Foreground="#6B7280" Content="全部待办 ›" ToolTip="把 DSH 拉到前台，打开 Dot 窗口看全部待办"/>
-              <TextBlock x:Name="TodoHead" Text="今天" FontSize="12" FontWeight="SemiBold" Foreground="#6B7280" VerticalAlignment="Center"/>
+          <StackPanel Margin="16,10,16,0">
+            <TextBlock x:Name="StatsText" FontSize="11.5" Foreground="#9CA3AF" TextWrapping="Wrap" Cursor="Hand" ToolTip="点开看今天按小时的统计"/>
+            <Border x:Name="StatsBox" Visibility="Collapsed" Margin="0,8,0,0" CornerRadius="12" Padding="12,10" Background="#F7F8FA">
+              <StackPanel>
+                <DockPanel>
+                  <Button x:Name="KeysBtn" DockPanel.Dock="Right" Style="{StaticResource Ghost}" Margin="0" Padding="7,1" FontSize="11"/>
+                  <TextBlock Text="今天" Style="{StaticResource Sec}"/>
+                </DockPanel>
+                <Canvas x:Name="StatsBars" Height="46" Margin="0,8,0,0"/>
+                <Grid Margin="0,2,0,0">
+                  <TextBlock Text="0" FontSize="10" Foreground="#9CA3AF" HorizontalAlignment="Left"/>
+                  <TextBlock Text="12" FontSize="10" Foreground="#9CA3AF" HorizontalAlignment="Center"/>
+                  <TextBlock Text="24 时" FontSize="10" Foreground="#9CA3AF" HorizontalAlignment="Right"/>
+                </Grid>
+                <TextBlock x:Name="StatsNote" Margin="0,6,0,0" FontSize="11" Foreground="#6B7280" TextWrapping="Wrap"/>
+              </StackPanel>
+            </Border>
+            <Border x:Name="FocusRow" Visibility="Collapsed" Margin="0,8,0,0" CornerRadius="10" Padding="10,6,6,6" Background="#ECFDF5">
+              <DockPanel>
+                <Button x:Name="FocusStopBtn" DockPanel.Dock="Right" Style="{StaticResource Ghost}" Margin="6,0,0,0" Padding="8,1" FontSize="11.5" Foreground="#0F6E56" Content="停止"/>
+                <TextBlock x:Name="FocusText" FontSize="12" Foreground="#0F6E56" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+              </DockPanel>
+            </Border>
+            <TextBlock x:Name="HintText" Margin="0,4,0,0" FontSize="11" Foreground="#9CA3AF" TextWrapping="Wrap" Visibility="Collapsed"/>
+            <StackPanel x:Name="Cards" Margin="0,10,0,0"/>
+            <!-- 今天的待办：圆角浅底的清单，最后一行直接记一件 -->
+            <StackPanel x:Name="TodoBox" Margin="0,4,0,0">
+              <DockPanel Margin="2,0,0,6">
+                <Button x:Name="TodoAllBtn" DockPanel.Dock="Right" Style="{StaticResource Ghost}" Margin="0" Padding="6,1" FontSize="11.5" Content="全部待办 ›" ToolTip="把 DSH 拉到前台，打开 Dot 窗口看全部待办"/>
+                <TextBlock x:Name="TodoHead" Text="今天" Style="{StaticResource Sec}"/>
+              </DockPanel>
+              <Border CornerRadius="12" Background="#F7F8FA" Padding="4">
+                <StackPanel>
+                  <StackPanel x:Name="TodoList"/>
+                  <Border CornerRadius="8" Padding="8,6" Background="Transparent">
+                    <DockPanel>
+                      <TextBlock DockPanel.Dock="Left" Style="{StaticResource Glyph}" Text="&#xE710;" FontSize="11" Foreground="#9CA3AF" Margin="1,0,10,0"/>
+                      <Grid>
+                        <TextBlock x:Name="TodoPh" Text="记一件：明天9点 交周报 · 每周一 周会" Foreground="#9CA3AF" FontSize="12" IsHitTestVisible="False" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                        <TextBox x:Name="TodoInput" BorderThickness="0" Background="Transparent" FontSize="12" VerticalContentAlignment="Center" ToolTip="回车记下。没写时间的放进今天；用「；」分出小步骤"/>
+                      </Grid>
+                    </DockPanel>
+                  </Border>
+                </StackPanel>
+              </Border>
+            </StackPanel>
+            <Border x:Name="ReplyBox" Visibility="Collapsed" Margin="0,12,0,0" CornerRadius="12" Padding="12,10" Background="#F5F7FF">
+              <StackPanel>
+                <DockPanel>
+                  <Button x:Name="ReplyOpenBtn" DockPanel.Dock="Right" Style="{StaticResource Ghost}" Margin="0" Padding="7,1" FontSize="11" Foreground="#4D6BFE" Content="在 DSH 里看 ›"/>
+                  <TextBlock x:Name="ReplyHead" Text="Dot" FontSize="11.5" FontWeight="SemiBold" Foreground="#4D6BFE" VerticalAlignment="Center"/>
+                </DockPanel>
+                <ScrollViewer MaxHeight="150" VerticalScrollBarVisibility="Auto" Margin="0,4,0,0">
+                  <TextBlock x:Name="ReplyText" FontSize="12.5" Foreground="#1F2937" TextWrapping="Wrap" LineHeight="19"/>
+                </ScrollViewer>
+              </StackPanel>
+            </Border>
+            <!-- 跟 Dot 说话：发送按钮收在输入框里 -->
+            <Border Margin="0,12,0,0" CornerRadius="12" Background="White" BorderBrush="#E3E6EC" BorderThickness="1" Padding="12,3,3,3">
+              <DockPanel>
+                <Button x:Name="SendBtn" DockPanel.Dock="Right" Style="{StaticResource Main}" Margin="6,0,0,0" Padding="0" Width="30" Height="30"
+                        FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="12" Content="&#xE724;" ToolTip="发送（回车）"/>
+                <Grid>
+                  <TextBlock x:Name="Placeholder" Text="跟 Dot 说一句，让它去办…" Foreground="#9CA3AF" FontSize="12.5" IsHitTestVisible="False" VerticalAlignment="Center"/>
+                  <TextBox x:Name="Input" BorderThickness="0" Background="Transparent" FontSize="12.5" VerticalContentAlignment="Center"/>
+                </Grid>
+              </DockPanel>
+            </Border>
+            <WrapPanel x:Name="Quick" Margin="0,8,0,0"/>
+            <DockPanel x:Name="OutRow" Margin="0,2,0,6" Visibility="Collapsed">
+              <Button x:Name="UndoBtn" DockPanel.Dock="Right" Style="{StaticResource Ghost}" Margin="6,0,0,0" Padding="8,1" FontSize="11.5" Foreground="#4D6BFE" Content="撤销" Visibility="Collapsed" VerticalAlignment="Top"/>
+              <TextBlock x:Name="OutText" FontSize="12" TextWrapping="Wrap" VerticalAlignment="Center"/>
             </DockPanel>
-            <StackPanel x:Name="TodoList" Margin="0,2,0,0"/>
-            <Border CornerRadius="8" Background="#F6F7F9" Padding="8,4" Margin="0,4,0,0">
-              <Grid>
-                <TextBlock x:Name="TodoPh" Text="＋ 记一件（明天9点 交周报 / 每周一9点 周会）" Foreground="#9CA3AF" FontSize="12" IsHitTestVisible="False" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                <TextBox x:Name="TodoInput" BorderThickness="0" Background="Transparent" FontSize="12" VerticalContentAlignment="Center" ToolTip="回车记下。没写时间的放进今天；用「；」分出小步骤"/>
-              </Grid>
-            </Border>
           </StackPanel>
-          <Border x:Name="ReplyBox" Visibility="Collapsed" Margin="0,0,0,8" CornerRadius="10" Padding="10,8" Background="#F5F7FF" BorderBrush="#DDE3FF" BorderThickness="1">
-            <StackPanel>
-              <DockPanel>
-                <Button x:Name="ReplyOpenBtn" DockPanel.Dock="Right" Style="{StaticResource Btn}" Margin="0" Padding="7,1" FontSize="11" Content="在 DSH 里看"/>
-                <TextBlock x:Name="ReplyHead" Text="Dot" FontSize="11.5" FontWeight="SemiBold" Foreground="#4D6BFE" VerticalAlignment="Center"/>
-              </DockPanel>
-              <ScrollViewer MaxHeight="150" VerticalScrollBarVisibility="Auto" Margin="0,4,0,0">
-                <TextBlock x:Name="ReplyText" FontSize="12.5" Foreground="#1F2937" TextWrapping="Wrap"/>
-              </ScrollViewer>
-            </StackPanel>
+          <!-- 底栏：两个去 DSH 的入口 -->
+          <Border Margin="0,6,0,0" BorderBrush="#F0F1F4" BorderThickness="0,1,0,0" Padding="8,6">
+            <UniformGrid Columns="2">
+              <Button x:Name="DotBtn" Style="{StaticResource Ghost}" Margin="0,0,3,0" Padding="0,6" ToolTip="把 DSH 拉到前台，打开 Dot 会话（双击精灵也行）">
+                <StackPanel Orientation="Horizontal">
+                  <TextBlock Style="{StaticResource Glyph}" Text="&#xE8BD;" FontSize="12" Margin="0,1,7,0"/>
+                  <TextBlock Text="打开 Dot" FontSize="12"/>
+                </StackPanel>
+              </Button>
+              <Button x:Name="SessBtn" Style="{StaticResource Ghost}" Margin="3,0,0,0" Padding="0,6" ToolTip="把 DSH 拉到前台，打开会话总览">
+                <StackPanel Orientation="Horizontal">
+                  <TextBlock Style="{StaticResource Glyph}" Text="&#xE8A9;" FontSize="12" Margin="0,1,7,0"/>
+                  <TextBlock Text="会话总览" FontSize="12"/>
+                </StackPanel>
+              </Button>
+            </UniformGrid>
           </Border>
-          <WrapPanel x:Name="Quick"/>
-          <DockPanel Margin="0,2,0,0">
-            <Button x:Name="SendBtn" DockPanel.Dock="Right" Style="{StaticResource Main}" Margin="6,0,0,0" Content="发送"/>
-            <Border CornerRadius="8" BorderBrush="#D1D5DB" BorderThickness="1" Padding="6,3">
-              <Grid>
-                <TextBlock x:Name="Placeholder" Text="跟 Dot 说一句，让它去办…" Foreground="#9CA3AF" FontSize="12.5" IsHitTestVisible="False" VerticalAlignment="Center"/>
-                <TextBox x:Name="Input" BorderThickness="0" Background="Transparent" FontSize="12.5" VerticalContentAlignment="Center"/>
-              </Grid>
-            </Border>
-          </DockPanel>
-          <DockPanel x:Name="OutRow" Margin="0,6,0,0" Visibility="Collapsed">
-            <Button x:Name="UndoBtn" DockPanel.Dock="Right" Style="{StaticResource Btn}" Margin="6,0,0,0" Padding="8,1" FontSize="11.5" Content="撤销" Visibility="Collapsed" VerticalAlignment="Top"/>
-            <TextBlock x:Name="OutText" FontSize="12" TextWrapping="Wrap" VerticalAlignment="Center"/>
-          </DockPanel>
-          <UniformGrid Columns="2" Margin="0,10,0,0">
-            <Button x:Name="DotBtn" Style="{StaticResource Btn}" Margin="0,0,4,0" Padding="0,5" Content="打开 Dot" ToolTip="把 DSH 拉到前台，打开 Dot 会话（双击精灵也行）"/>
-            <Button x:Name="SessBtn" Style="{StaticResource Btn}" Margin="4,0,0,0" Padding="0,5" Content="会话总览" ToolTip="把 DSH 拉到前台，打开会话总览"/>
-          </UniformGrid>
         </StackPanel>
       </Border>
     </Popup>
@@ -378,7 +556,7 @@ $ui = @{}
 foreach ($n in 'Root', 'Stage', 'Pet', 'PetFlip', 'PetScale', 'PetBreath', 'PetRot', 'PetHop', 'PetBob', 'Bubble', 'BubbleText', 'EyeL', 'EyeR', 'EyeLX', 'EyeRX', 'EyeLO', 'EyeRO',
   'Mouth', 'CheekL', 'CheekR', 'Sweat', 'Shine', 'FootL', 'FootR', 'Ahoge', 'AhogeRot', 'Body', 'Shadow', 'RingBox', 'Ring', 'Carry', 'CarryRot', 'CarryText', 'Fx', 'Keyboard',
   'OScarf', 'OLeaf', 'OCap', 'OHeadphones', 'OBow', 'OCrown', 'StatsText', 'StatsBox', 'KeysBtn', 'StatsBars', 'StatsNote', 'FocusRow', 'FocusStopBtn', 'FocusText',
-  'Top', 'Bottom', 'Panel', 'CloseBtn', 'PauseBtn',
+  'Top', 'Bottom', 'AvTop', 'AvBottom', 'Panel', 'CloseBtn', 'PauseBtn',
   'NameText', 'SummaryText', 'HintText', 'Cards', 'ReplyBox', 'ReplyHead', 'ReplyText', 'ReplyOpenBtn', 'Quick', 'SendBtn', 'Placeholder', 'Input', 'OutText', 'DotBtn', 'SessBtn',
   'TodoBox', 'TodoHead', 'TodoList', 'TodoAllBtn', 'TodoPh', 'TodoInput', 'OutRow', 'UndoBtn') {
   $ui[$n] = $window.FindName($n)
@@ -680,21 +858,24 @@ function Render-Todos([bool]$force) {
   if (-not $force -and -not $script:forceCards -and $key -eq $script:todosKey) { return }
   if (-not $force -and $ui.TodoList.IsMouseOver) { return }
   $script:todosKey = $key
-  $ui.TodoHead.Text = if ($todos.Count -or $more) { "今天 · $($todos.Count + $more) 件" + $(if ($inbox) { "　收件箱 $inbox" } else { '' }) } else { '今天' + $(if ($inbox) { " · 收件箱还有 $inbox 件没定时间" } else { '' }) }
+  $ui.TodoHead.Text = if ($todos.Count -or $more) { "今天 $($todos.Count + $more)" + $(if ($inbox) { "  ·  收件箱 $inbox" } else { '' }) } else { '今天' + $(if ($inbox) { "  ·  收件箱 $inbox 件没定时间" } else { '' }) }
   $ui.TodoList.Children.Clear()
   foreach ($t in $todos) {
+    # 一行：圆圈、标题和时间；悬停时整行变白，右边露出「提醒我」「专注」两个图标
+    $rowBox = New-Object Windows.Controls.Border
+    $rowBox.CornerRadius = 8; $rowBox.Padding = '8,6,4,6'; $rowBox.Background = New-Brush '#00FFFFFF'
     $row = New-Object Windows.Controls.DockPanel
-    $row.Margin = '0,3,0,0'; $row.Background = New-Brush '#00FFFFFF'
+    $rowBox.Child = $row
     # 提醒我 / 改时间（悬停时显示）：点开一个小菜单，一下选好
     $later = New-Object Windows.Controls.Button
-    $later.Content = [string][char]0x23F0; $later.Style = $window.FindResource('Btn'); $later.Background = New-Brush '#00FFFFFF'
-    $later.Margin = '4,0,0,0'; $later.Padding = '4,0'; $later.Foreground = New-Brush '#9CA3AF'; $later.Opacity = 0
+    $later.Content = [string][char]0xE823; $later.Style = $window.FindResource('IconBtn'); $later.Width = 26; $later.Height = 26; $later.Opacity = 0
     $later.ToolTip = if ($t.sub) { '改时间' } else { '提醒我' }
     $menu = New-Object Windows.Controls.ContextMenu
+    $menu.Style = $window.FindResource('Menu')
     foreach ($p in @(@('30m', '半小时后'), @('1h', '1 小时后'), @('offwork', '下班前'), @('tonight', '今晚 8 点'), @('tomorrow', '明早 9 点'), @('weekend', '周末'))) {
       $mi = New-Object Windows.Controls.MenuItem
       $mi.Header = $p[1]
-      $mi.Tag = @{ op = @{ post = '/task'; body = @{ id = [string]$t.id; action = 'snooze'; to = $p[0] } }; box = $row }
+      $mi.Tag = @{ op = @{ post = '/task'; body = @{ id = [string]$t.id; action = 'snooze'; to = $p[0] } }; box = $rowBox }
       $mi.Add_Click({ param($sender, $e) Run-Op $sender.Tag })
       [void]$menu.Items.Add($mi)
     }
@@ -704,48 +885,49 @@ function Render-Todos([bool]$force) {
     [void]$row.Children.Add($later)
     # 专注：我戴上耳机陪你 25 分钟
     $fb = New-Object Windows.Controls.Button
-    $fb.Content = [string][char]::ConvertFromUtf32(0x1F3A7); $fb.Style = $window.FindResource('Btn'); $fb.Background = New-Brush '#00FFFFFF'
-    $fb.Margin = '4,0,0,0'; $fb.Padding = '4,0'; $fb.Foreground = New-Brush '#9CA3AF'; $fb.Opacity = 0; $fb.ToolTip = '陪我专注 25 分钟'
+    $fb.Content = [string][char]0xE7F6; $fb.Style = $window.FindResource('IconBtn'); $fb.Width = 26; $fb.Height = 26; $fb.Opacity = 0; $fb.ToolTip = '陪我专注 25 分钟'
     $fb.Tag = [string]$t.id
     $fb.Add_Click({ param($sender, $e) Send-Dot '/pet' @{ action = 'focus'; id = [string]$sender.Tag } 'On-OpDone' $null })
     [Windows.Controls.DockPanel]::SetDock($fb, 'Right')
     [void]$row.Children.Add($fb)
-    $row.Tag = @($later, $fb)
-    $row.Add_MouseEnter({ param($sender, $e) foreach ($x in $sender.Tag) { $x.Opacity = 1 } })
-    $row.Add_MouseLeave({ param($sender, $e) foreach ($x in $sender.Tag) { $x.Opacity = 0 } })
+    $rowBox.Tag = @($later, $fb)
+    $rowBox.Add_MouseEnter({ param($sender, $e) $sender.Background = New-Brush '#FFFFFF'; foreach ($x in $sender.Tag) { $x.Opacity = 1 } })
+    $rowBox.Add_MouseLeave({ param($sender, $e) $sender.Background = New-Brush '#00FFFFFF'; foreach ($x in $sender.Tag) { $x.Opacity = 0 } })
     # 圆圈：点了就划掉
     $check = New-Object Windows.Controls.Button
-    $check.Style = $window.FindResource('Btn'); $check.Background = New-Brush '#00FFFFFF'; $check.Padding = '0'; $check.Margin = '0,1,8,0'
-    $check.VerticalAlignment = 'Top'; $check.ToolTip = '完成（可撤销）'
+    $check.Style = $window.FindResource('Ghost'); $check.Padding = '0'; $check.Margin = $(if ($t.sub) { '0,2,9,0' } else { '0,0,9,0' })
+    $check.VerticalAlignment = $(if ($t.sub) { 'Top' } else { 'Center' }); $check.ToolTip = '完成（可撤销）'
     $ring = New-Object Windows.Controls.Border
-    $ring.Width = 15; $ring.Height = 15; $ring.CornerRadius = 8; $ring.BorderThickness = 1.6
-    $ring.BorderBrush = New-Brush $(if ($t.overdue) { '#EF4444' } elseif ($t.high) { '#F59E0B' } else { '#9CA3AF' })
+    $ring.Width = 16; $ring.Height = 16; $ring.CornerRadius = 8; $ring.BorderThickness = 1.6; $ring.Background = New-Brush '#FFFFFF'
+    $ring.BorderBrush = New-Brush $(if ($t.overdue) { '#EF4444' } elseif ($t.high) { '#F59E0B' } else { '#B6BCC6' })
     $check.Content = $ring
     [Windows.Controls.DockPanel]::SetDock($check, 'Left')
     [void]$row.Children.Add($check)
     $text = New-Object Windows.Controls.StackPanel
+    $text.VerticalAlignment = 'Center'
     $title = New-Object Windows.Controls.TextBlock
     $title.Text = [string]$t.title; $title.FontSize = 12.5; $title.TextTrimming = 'CharacterEllipsis'; $title.ToolTip = [string]$t.title
-    $title.Foreground = New-Brush $(if ($t.high) { '#B45309' } else { '#111827' })
+    $title.Foreground = New-Brush '#111827'
+    if ($t.high) { $title.FontWeight = 'SemiBold' }
     [void]$text.Children.Add($title)
     if ($t.sub) {
       $sub = New-Object Windows.Controls.TextBlock
-      $sub.Text = [string]$t.sub; $sub.FontSize = 11; $sub.Foreground = New-Brush $(if ($t.overdue) { '#DC2626' } else { '#9CA3AF' })
+      $sub.Text = [string]$t.sub; $sub.FontSize = 11; $sub.Margin = '0,1,0,0'; $sub.Foreground = New-Brush $(if ($t.overdue) { '#DC2626' } else { '#9CA3AF' })
       [void]$text.Children.Add($sub)
     }
     [void]$row.Children.Add($text)
-    $check.Tag = @{ id = [string]$t.id; ring = $ring; title = $title; row = $row }
+    $check.Tag = @{ id = [string]$t.id; ring = $ring; title = $title; row = $rowBox }
     $check.Add_Click({ param($sender, $e) Check-Todo $sender.Tag })
-    [void]$ui.TodoList.Children.Add($row)
+    [void]$ui.TodoList.Children.Add($rowBox)
   }
   if ($more -gt 0) {
     $m = New-Object Windows.Controls.TextBlock
-    $m.Text = "还有 $more 件，点「全部待办」看"; $m.FontSize = 11; $m.Foreground = New-Brush '#9CA3AF'; $m.Margin = '23,3,0,0'
+    $m.Text = "还有 $more 件，点「全部待办」看"; $m.FontSize = 11; $m.Foreground = New-Brush '#9CA3AF'; $m.Margin = '33,2,0,4'
     [void]$ui.TodoList.Children.Add($m)
   }
   if (-not $todos.Count -and -not $more) {
     $e = New-Object Windows.Controls.TextBlock
-    $e.Text = '今天没有排上的事。在下面记一件，或者把文字拖到我身上。'; $e.FontSize = 11.5; $e.Foreground = New-Brush '#9CA3AF'; $e.TextWrapping = 'Wrap'; $e.Margin = '0,2,0,0'
+    $e.Text = '今天没有排上的事。在下面记一件，或者把文字拖到我身上。'; $e.FontSize = 11.5; $e.Foreground = New-Brush '#9CA3AF'; $e.TextWrapping = 'Wrap'; $e.Margin = '8,6,8,2'
     [void]$ui.TodoList.Children.Add($e)
   }
 }
@@ -790,13 +972,13 @@ function Say([string]$text) {
   if (-not $text) { return }
   [void]$script:history.Insert(0, $text); if ($script:history.Count -gt 20) { $script:history.RemoveAt(20) }
   $script:histPos = -1
-  $ui.SendBtn.IsEnabled = $false; $ui.SendBtn.Content = '…'
+  $ui.SendBtn.IsEnabled = $false; $ui.SendBtn.Content = [string][char]0xE712
   $isCmd = $text.StartsWith('/')
   if (-not $isCmd) { $script:sentAt = Now-Ms }
   Send-Dot '/say' @{ text = $text } 'On-Said' @{ cmd = $isCmd }
 }
 function On-Said($r, $state) {
-  $ui.SendBtn.IsEnabled = $true; $ui.SendBtn.Content = '发送'
+  $ui.SendBtn.IsEnabled = $true; $ui.SendBtn.Content = [string][char]0xE724
   if ($r.ok -ne $false) { $ui.Input.Text = '' }
   Show-Out ([string]$r.text) ($r.ok -eq $false)
   if (-not $state.cmd -and $r.ok -ne $false) {
@@ -833,9 +1015,9 @@ $ui.DotBtn.Add_Click({ Focus-Dsh ([pscustomobject]@{ nav = 'dot' }) })
 $ui.SessBtn.Add_Click({ Focus-Dsh ([pscustomobject]@{ nav = 'sessions' }) })
 $ui.ReplyOpenBtn.Add_Click({ Focus-Dsh ([pscustomobject]@{ nav = 'dot' }) })
 # 快捷按钮：「!」开头的直接发，其余填进输入框
-foreach ($q in @(@('设个提醒', '/remind '), @('今日简报', '!/brief'), @('整理会话名', '!帮我整理一下会话的名字：用 dot_sessions list 找出名字待整理的，读一下在做什么，起好名字用 rename 提给我确认'), @('能做什么', '!/dot'))) {
+foreach ($q in @(@('设提醒', '/remind '), @('今日简报', '!/brief'), @('整理会话名', '!帮我整理一下会话的名字：用 dot_sessions list 找出名字待整理的，读一下在做什么，起好名字用 rename 提给我确认'), @('能做什么', '!/dot'))) {
   $b = New-Object Windows.Controls.Button
-  $b.Content = $q[0]; $b.Style = $window.FindResource('Btn'); $b.Margin = '0,0,6,6'; $b.Tag = $q[1]
+  $b.Content = $q[0]; $b.Style = $window.FindResource('Chip'); $b.Tag = $q[1]
   $b.Add_Click({
     param($sender, $e)
     $fill = [string]$sender.Tag
@@ -869,54 +1051,76 @@ $ui.Root.Add_Drop({
 $script:cardsKey = ''
 $script:forceCards = $false
 $script:desk = $null
-$kindColors = @{ focus = '#ECFDF5'; break = '#EFF6FF'; evening = '#F5F3FF'; approval = '#FFF7E6'; question = '#FFF7E6'; overdue = '#FEF2F2'; failed = '#FEF2F2'; done = '#ECFDF5'; handoff = '#F5F3FF'; soon = '#FFFBEB'; suggestions = '#EEF2FF' }
-$kindBorders = @{ focus = '#86EFAC'; break = '#BFDBFE'; evening = '#C4B5FD'; approval = '#FCD34D'; question = '#FCD34D'; overdue = '#FCA5A5'; failed = '#FCA5A5'; done = '#86EFAC'; handoff = '#C4B5FD'; soon = '#FDE68A'; suggestions = '#C7D2FE' }
+# 每种卡片一个图标和一种颜色：图标块用淡底色，卡片本身是白的
+$kindLook = @{
+  approval = @([char]0xE7BA, '#D97706', '#FFF4E0'); question = @([char]0xE897, '#D97706', '#FFF4E0')
+  overdue = @([char]0xE823, '#DC2626', '#FEECEC'); soon = @([char]0xE823, '#D97706', '#FFF4E0')
+  failed = @([char]0xE783, '#DC2626', '#FEECEC'); done = @([char]0xE73E, '#16A34A', '#E8F8EE')
+  handoff = @([char]0xE716, '#7C3AED', '#F2ECFE'); suggestions = @([char]0xEA80, '#4D6BFE', '#EEF1FF')
+  focus = @([char]0xE7F6, '#0F9D6E', '#E6F7F0'); break = @([char]0xEC32, '#2563EB', '#EAF1FE'); evening = @([char]0xE708, '#7C3AED', '#F2ECFE')
+}
+function New-Glyph([string]$g, [string]$color, [double]$size = 13) {
+  $t = New-Object Windows.Controls.TextBlock
+  $t.Text = $g; $t.Style = $window.FindResource('Glyph'); $t.FontSize = $size
+  if ($color) { $t.Foreground = New-Brush $color }
+  return $t
+}
 function Render-Cards([bool]$force) {
   $desk = $script:desk
   if (-not $desk) { return }
   Render-Todos $force
-  $cards = @($desk.cards)
+  $cards = @(@($desk.cards) | Where-Object { $null -ne $_ })
   $key = ($cards | ForEach-Object { "$($_.key)|$($_.body)" }) -join "`n"
   if (-not $force -and -not $script:forceCards -and $key -eq $script:cardsKey) { return }
   if (-not $force -and $ui.Cards.IsMouseOver) { return }
   $script:cardsKey = $key; $script:forceCards = $false
   $ui.Cards.Children.Clear()
   foreach ($c in ($cards | Select-Object -First $MaxCards)) {
+    $look = $kindLook[[string]$c.kind]; if (-not $look) { $look = @([char]0xE946, '#6B7280', '#F2F4F7') }
     $box = New-Object Windows.Controls.Border
-    $box.CornerRadius = 10; $box.Padding = '10,8'; $box.Margin = '0,0,0,8'; $box.BorderThickness = 1
-    $bg = $kindColors[[string]$c.kind]; if (-not $bg) { $bg = '#F9FAFB' }
-    $bd = $kindBorders[[string]$c.kind]; if (-not $bd) { $bd = '#E5E7EB' }
-    $box.Background = New-Brush $bg; $box.BorderBrush = New-Brush $bd
+    $box.CornerRadius = 12; $box.Padding = '10,10,12,10'; $box.Margin = '0,0,0,8'; $box.BorderThickness = 1
+    $box.Background = New-Brush '#FFFFFF'; $box.BorderBrush = New-Brush '#ECEEF2'
+    $dock = New-Object Windows.Controls.DockPanel
+    $tile = New-Object Windows.Controls.Border
+    $tile.Width = 28; $tile.Height = 28; $tile.CornerRadius = 8; $tile.Margin = '0,0,10,0'; $tile.VerticalAlignment = 'Top'
+    $tile.Background = New-Brush $look[2]
+    $g = New-Glyph ([string]$look[0]) $look[1] 13; $g.HorizontalAlignment = 'Center'
+    $tile.Child = $g
+    [Windows.Controls.DockPanel]::SetDock($tile, 'Left')
+    [void]$dock.Children.Add($tile)
     $stack = New-Object Windows.Controls.StackPanel
     $t = New-Object Windows.Controls.TextBlock
-    $t.Text = [string]$c.title; $t.FontWeight = 'SemiBold'; $t.FontSize = 13; $t.TextTrimming = 'CharacterEllipsis'; $t.ToolTip = [string]$c.title
+    $t.Text = [string]$c.title; $t.FontWeight = 'SemiBold'; $t.FontSize = 12.5; $t.Foreground = New-Brush '#111827'
+    $t.TextTrimming = 'CharacterEllipsis'; $t.ToolTip = [string]$c.title; $t.Margin = '0,1,0,0'
     [void]$stack.Children.Add($t)
     if ($c.body) {
       $bt = New-Object Windows.Controls.TextBlock
-      $bt.Text = [string]$c.body; $bt.FontSize = 12; $bt.Foreground = New-Brush '#4B5563'; $bt.TextWrapping = 'Wrap'; $bt.MaxHeight = 34
+      $bt.Text = [string]$c.body; $bt.FontSize = 11.5; $bt.Foreground = New-Brush '#6B7280'; $bt.TextWrapping = 'Wrap'; $bt.MaxHeight = 32
       $bt.TextTrimming = 'CharacterEllipsis'; $bt.Margin = '0,2,0,0'; $bt.ToolTip = [string]$c.body
       [void]$stack.Children.Add($bt)
     }
     if (@($c.buttons).Count) {
       $row = New-Object Windows.Controls.WrapPanel
-      $row.Margin = '0,6,0,0'
+      $row.Margin = '0,8,0,0'
       foreach ($btn in @($c.buttons)) {
         $b = New-Object Windows.Controls.Button
         $b.Content = [string]$btn.label
         $b.Style = $window.FindResource($(if ($btn.main) { 'Main' } else { 'Btn' }))
+        $b.Padding = '10,3'; $b.FontSize = 11.5
         $b.Tag = @{ op = $btn.op; box = $box }
         $b.Add_Click({ param($sender, $e) Run-Op $sender.Tag })
         [void]$row.Children.Add($b)
       }
       [void]$stack.Children.Add($row)
     }
-    $box.Child = $stack
+    [void]$dock.Children.Add($stack)
+    $box.Child = $dock
     [void]$ui.Cards.Children.Add($box)
   }
   if ($cards.Count -gt $MaxCards) {
     $more = New-Object Windows.Controls.Button
-    $more.Content = "还有 $($cards.Count - $MaxCards) 件，去 Dot 窗口看"; $more.Style = $window.FindResource('Btn')
-    $more.HorizontalAlignment = 'Left'; $more.Margin = '0,0,0,8'
+    $more.Content = "还有 $($cards.Count - $MaxCards) 件，去 Dot 窗口看 ›"; $more.Style = $window.FindResource('Ghost'); $more.FontSize = 11.5
+    $more.HorizontalAlignment = 'Left'; $more.Margin = '0,-2,0,8'
     $more.Add_Click({ Focus-Dsh ([pscustomobject]@{ nav = 'dot' }) })
     [void]$ui.Cards.Children.Add($more)
   }
@@ -1011,30 +1215,48 @@ function Pet-Stroked {
   Wiggle
 }
 
-# ── 右键菜单 ──
+# ── 右键菜单（圆角卡片，每项一个图标）──
 $menu = New-Object Windows.Controls.ContextMenu
-$miOpen = New-Object Windows.Controls.MenuItem; $miOpen.Header = '打开 Dot'; $miOpen.Add_Click({ Focus-Dsh ([pscustomobject]@{ nav = 'dot' }) })
-$miSess = New-Object Windows.Controls.MenuItem; $miSess.Header = '会话总览'; $miSess.Add_Click({ Focus-Dsh ([pscustomobject]@{ nav = 'sessions' }) })
-$miBrief = New-Object Windows.Controls.MenuItem; $miBrief.Header = '今日简报'; $miBrief.Add_Click({ Open-Panel; Say '/brief' })
-$miStats = New-Object Windows.Controls.MenuItem; $miStats.Header = '今日统计'; $miStats.Add_Click({ Open-Panel; Show-Stats $true })
-$miFocus = New-Object Windows.Controls.MenuItem; $miFocus.Header = '专注…（在面板的待办上点 🎧）'; $miFocus.Add_Click({ Open-Panel; Show-Out '在下面「今天」的待办上点 🎧，我陪你专注 25 分钟' $false })
+$menu.Style = $window.FindResource('Menu')
+function New-MenuItem([string]$header, [int]$glyph, [string]$tip) {
+  $mi = New-Object Windows.Controls.MenuItem
+  $mi.Header = $header
+  if ($glyph) { $mi.Icon = New-Glyph ([string][char]$glyph) '#6B7280' 13 }
+  if ($tip) { $mi.ToolTip = $tip }
+  return $mi
+}
+$miOpen = New-MenuItem '打开 Dot' 0xE8BD '双击精灵也行'; $miOpen.FontWeight = 'SemiBold'; $miOpen.Add_Click({ Focus-Dsh ([pscustomobject]@{ nav = 'dot' }) })
+$miSess = New-MenuItem '会话总览' 0xE8A9 ''; $miSess.Add_Click({ Focus-Dsh ([pscustomobject]@{ nav = 'sessions' }) })
+$miBrief = New-MenuItem '今日简报' 0xE787 ''; $miBrief.Add_Click({ Open-Panel; Say '/brief' })
+$miStats = New-MenuItem '今日统计' 0xE9D2 '今天按小时的工作时长'; $miStats.Add_Click({ Open-Panel; Show-Stats $true })
+$miFocus = New-MenuItem '专注 25 分钟…' 0xE7F6 '在面板「今天」的待办上点耳机图标'; $miFocus.Add_Click({ Open-Panel; Show-Out '在下面「今天」的待办上点耳机图标，我陪你专注 25 分钟' $false })
 # 换装：一开始全部可选
-$miOutfit = New-Object Windows.Controls.MenuItem; $miOutfit.Header = '换装'
-$Outfits = @(@('none', '不戴'), @('scarf', '小围巾'), @('leaf', '头顶小叶子'), @('cap', '鸭舌帽'), @('headphones', '耳机'), @('bow', '蝴蝶结'), @('crown', '小皇冠'))
+$miOutfit = New-MenuItem '换装' 0xE771 ''
+$Outfits = @(@('none', '不戴', ''), @('scarf', '小围巾', '#EF5B5B'), @('leaf', '头顶小叶子', '#4CC38A'), @('cap', '鸭舌帽', '#2F3A56'), @('headphones', '耳机', '#F5A524'), @('bow', '蝴蝶结', '#FF7FA8'), @('crown', '小皇冠', '#FFC83D'))
 foreach ($o in $Outfits) {
   $mi = New-Object Windows.Controls.MenuItem
   $mi.Header = $o[1]; $mi.Tag = $o[0]; $mi.IsCheckable = $true; $mi.IsChecked = ($o[0] -eq 'none')
+  # 每件装扮一个颜色小圆点（「不戴」是空心的）
+  $dot = New-Object Windows.Shapes.Ellipse
+  $dot.Width = 10; $dot.Height = 10; $dot.VerticalAlignment = 'Center'
+  if ($o[2]) { $dot.Fill = New-Brush $o[2] } else { $dot.Stroke = New-Brush '#B6BCC6'; $dot.StrokeThickness = 1.4 }
+  $mi.Icon = $dot
   $mi.Add_Click({ param($sender, $e) Send-Dot '/pet' @{ action = 'outfit'; id = [string]$sender.Tag } 'On-OpDone' $null; $script:outfit = [string]$sender.Tag; Apply-Outfit; Update-OutfitMenu; Bounce })
   [void]$miOutfit.Items.Add($mi)
 }
 function Update-OutfitMenu { foreach ($mi in $miOutfit.Items) { $mi.IsChecked = ([string]$mi.Tag -eq $script:outfit) } }
-$miGround = New-Object Windows.Controls.MenuItem; $miGround.Header = '回到任务栏上'
+$miGround = New-MenuItem '回到任务栏上' 0xE896 ''
 $miGround.Add_Click({ $script:edge = 'ground'; $script:hidden = $false; Update-Layout; $script:vx = 0.0; $script:vy = 0.0; $script:maxFall = 0; Set-Act 'fall' })
-$miPause = New-Object Windows.Controls.MenuItem; $miPause.Header = '暂停 Dot'; $miPause.Add_Click({ Say $(if ($script:paused) { '/resume' } else { '/pause' }) })
-$miQuiet = New-Object Windows.Controls.MenuItem; $miQuiet.Header = '安静模式（不走动、不冒气泡）'; $miQuiet.IsCheckable = $true
-$miExit = New-Object Windows.Controls.MenuItem; $miExit.Header = '关掉桌面精灵（DSH 重启后会再出现）'; $miExit.Add_Click({ $window.Close() })
-foreach ($mi in @($miOpen, $miSess, $miBrief, $miStats, (New-Object Windows.Controls.Separator), $miFocus, $miOutfit, $miGround, (New-Object Windows.Controls.Separator), $miPause, $miQuiet, (New-Object Windows.Controls.Separator), $miExit)) { [void]$menu.Items.Add($mi) }
-$menu.Add_Opened({ $miGround.Visibility = if ($script:edge -eq 'ground') { 'Collapsed' } else { 'Visible' } })
+$miPause = New-MenuItem '暂停 Dot' 0xE769 '暂停定时任务和有副作用的操作'; $miPause.Add_Click({ Say $(if ($script:paused) { '/resume' } else { '/pause' }) })
+$miQuiet = New-MenuItem '安静模式' 0xE708 '不走动、不冒气泡'; $miQuiet.IsCheckable = $true
+$miExit = New-MenuItem '关掉桌面精灵' 0xE7E8 'DSH 重启后会再出现'; $miExit.Add_Click({ $window.Close() })
+function New-Sep { $x = New-Object Windows.Controls.Separator; $x.Style = $window.FindResource('Sep'); return $x }
+foreach ($mi in @($miOpen, $miSess, $miBrief, $miStats, (New-Sep), $miFocus, $miOutfit, $miGround, (New-Sep), $miPause, $miQuiet, (New-Sep), $miExit)) { [void]$menu.Items.Add($mi) }
+$menu.Add_Opened({
+  $miGround.Visibility = if ($script:edge -eq 'ground') { 'Collapsed' } else { 'Visible' }
+  $miPause.Header = if ($script:paused) { '恢复 Dot' } else { '暂停 Dot' }
+  $miPause.Icon = New-Glyph ([string][char]$(if ($script:paused) { 0xE768 } else { 0xE769 })) '#6B7280' 13
+})
 $ui.Pet.ContextMenu = $menu
 
 # ── 桌宠的身体：颜色、表情、装扮、手里的东西、粒子 ──
@@ -1055,6 +1277,7 @@ function Apply-Colors {
   $ui.Top.Color = [Windows.Media.ColorConverter]::ConvertFromString($c[0])
   $ui.Bottom.Color = [Windows.Media.ColorConverter]::ConvertFromString($c[1])
   $ui.Ahoge.Stroke = New-Brush $c[1]
+  $ui.AvTop.Color = $ui.Top.Color; $ui.AvBottom.Color = $ui.Bottom.Color
 }
 
 # 表情：眼睛（normal 竖条 / half 半闭 / line 闭眼 / dot 圆点 / wink 眨一只 / happy ^^ / dizzy 转圈）+ 嘴 + 腮红 + 汗
@@ -1136,9 +1359,11 @@ function Apply-Outfit {
 }
 
 # 手里的东西：包裹（N 件事需要你；急事是红的）、信封（会话跑完了）
+# 建议和精灵自己的卡片（专注结束、歇一会儿、收尾）不算需要你：面板里照常显示，手里不拿东西
+$NoCarry = @('suggestions', 'focus', 'break', 'evening')
 $script:carryUrgent = $false
 function Set-Carry($cards) {
-  $cards = @($cards)
+  $cards = @(@($cards) | Where-Object { $null -ne $_ -and $NoCarry -notcontains [string]$_.kind })
   if (-not $cards.Count) { $ui.Carry.Visibility = 'Collapsed'; $script:carryUrgent = $false; return }
   $kinds = @($cards | ForEach-Object { [string]$_.kind })
   $urgent = @($kinds | Where-Object { @('approval', 'question', 'failed', 'overdue') -contains $_ }).Count -gt 0
@@ -1562,7 +1787,8 @@ function On-Status($s, $state) {
     $ui.HintText.Text = [string]$desk.hint
     $ui.HintText.Visibility = if ($desk.hint) { 'Visible' } else { 'Collapsed' }
   }
-  $ui.PauseBtn.Content = if ($script:paused) { '恢复' } else { '暂停' }
+  $ui.PauseBtn.Content = [string][char]$(if ($script:paused) { 0xE768 } else { 0xE769 })
+  $ui.PauseBtn.ToolTip = if ($script:paused) { '恢复 Dot' } else { '暂停 Dot 的定时任务和有副作用的操作' }
   $mood = [string]$s.mood
   $script:mood = $mood
   Apply-Colors
@@ -1585,7 +1811,9 @@ function On-Status($s, $state) {
   }
 
   # 角标：有卡片就显示张数，颜色按最急的那张；没卡片时用表情符号
-  $cards = if ($desk) { @($desk.cards) } else { @() }
+  # 注意：`$x = if (...) { @() }` 会把空数组展开成 $null，传进函数后 @($null) 的 Count 是 1，
+  # 精灵就会举着一个写「1」的包裹。所以这里先滤掉空值，Set-Carry 里也再滤一遍。
+  $cards = @(); if ($desk) { $cards = @(@($desk.cards) | Where-Object { $null -ne $_ }) }
   $keys = @($cards | ForEach-Object { [string]$_.key })
   if ($null -ne $script:seenCards) {
     $fresh = @($cards | Where-Object { $script:seenCards -notcontains [string]$_.key })
@@ -1652,6 +1880,47 @@ if ($FrameDir -and (Test-Path -LiteralPath $FrameDir)) {
     } catch { if (-not $script:recErr) { $script:recErr = $true; Write-PetLog "recording failed: $_" } }
   })
   Write-PetLog "recording frames to $FrameDir"
+}
+
+# ── 开发用：给面板和右键菜单拍照。只有设置了环境变量 DOT_PET_SHOT（一个已存在的目录）才启用 ──
+# 启动后自动打开面板、右键菜单、换装子菜单，各画一张 PNG（用 VisualBrush 画控件本身，不截屏）
+$ShotDir = $env:DOT_PET_SHOT
+if ($ShotDir -and (Test-Path -LiteralPath $ShotDir)) {
+  function Save-Visual($v, [string]$name) {
+    try {
+      $v.UpdateLayout()
+      $w = [Math]::Ceiling($v.ActualWidth); $h = [Math]::Ceiling($v.ActualHeight); $pad = 24.0; $k = 2.0
+      $dv = New-Object Windows.Media.DrawingVisual
+      $dc = $dv.RenderOpen()
+      $dc.DrawRectangle((New-Brush '#E9ECF1'), $null, [Windows.Rect]::new(0, 0, $w + $pad * 2, $h + $pad * 2))
+      $dc.DrawRectangle([Windows.Media.VisualBrush]::new($v), $null, [Windows.Rect]::new($pad, $pad, $w, $h))
+      $dc.Close()
+      $rtb = [Windows.Media.Imaging.RenderTargetBitmap]::new([int](($w + $pad * 2) * $k), [int](($h + $pad * 2) * $k), [double](96 * $k), [double](96 * $k), [Windows.Media.PixelFormats]::Pbgra32)
+      $rtb.Render($dv)
+      $enc = New-Object Windows.Media.Imaging.PngBitmapEncoder
+      $enc.Frames.Add([Windows.Media.Imaging.BitmapFrame]::Create($rtb))
+      $fs = [IO.File]::Create((Join-Path $ShotDir $name)); $enc.Save($fs); $fs.Close()
+      Write-PetLog "shot $name ${w}x${h}"
+    } catch { Write-PetLog "shot $name failed: $_" }
+  }
+  $script:shotStep = 0
+  $shot = New-Object Windows.Threading.DispatcherTimer
+  $shot.Interval = [TimeSpan]::FromMilliseconds(1200)
+  $shot.Add_Tick({
+    $script:shotStep++
+    switch ($script:shotStep) {
+      3 { Open-Panel }
+      6 { Save-Visual $ui.Panel.Child 'panel.png' }
+      7 { Close-Panel; $menu.PlacementTarget = $ui.Pet; $menu.IsOpen = $true }
+      9 { Save-Visual $menu 'menu.png'; Write-PetLog "menu popup transparent=$($menu.Parent.AllowsTransparency)"; $miOutfit.IsSubmenuOpen = $true }
+      11 {
+        $p = $miOutfit.Template.FindName('PART_Popup', $miOutfit)
+        if ($p -and $p.Child) { Save-Visual $p.Child 'outfit.png' }
+        $menu.IsOpen = $false; $shot.Stop()
+      }
+    }
+  })
+  $shot.Start()
 }
 
 # ── 全局快捷键 Alt+Shift+D：开关面板（被别的程序占用时注册失败，其余功能照常）──
