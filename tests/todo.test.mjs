@@ -413,3 +413,16 @@ test('/task 接口：从「今天」入口记、没写时间的放进今天；�
   assert.ok(store.snapshot().tasks.find(x => x.id === b.id)?.due)
   assert.match((await call(task, { id: b.id, action: 'snooze', to: 'offwork' })).text, /^改到 /)
 })
+
+test('补记以前的事：「昨天10点 X」「前天 X」记成那天到期（逾期），不提醒，不会被当成今天或明天', async () => {
+  const { parseTodoTime } = await import('../lib/todo.js')
+  const now = new Date(2026, 10, 12, 13, 0)
+  const y = parseTodoTime('昨天10点 交季度报告', now)
+  assert.equal(y.rest, '交季度报告')
+  assert.equal(y.due?.getTime(), new Date(2026, 10, 11, 10, 0).getTime())
+  assert.equal(y.remind, false)
+  assert.equal(y.today, false)
+  const q = parseTodoTime('前天 交报告', now)
+  assert.equal(q.due?.getTime(), new Date(2026, 10, 10, 9, 0).getTime())
+  assert.equal(q.remind, false)
+})

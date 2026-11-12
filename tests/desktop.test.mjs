@@ -82,8 +82,12 @@ test('桌面精灵脚本：带 BOM（PowerShell 5.1 才能读中文），写操�
   assert.doesNotMatch(src, /Invoke-WebRequest|Invoke-RestMethod|UploadString/i)
   assert.equal(src.match(/\[DotPet\.Http\]::Post/g)?.length, 1)
   { const i = src.indexOf('function Send-Dot'); assert.ok(i > 0 && src.slice(i, i + 160).includes('if ($AllowedPosts -notcontains $path)')) }
-  assert.match(src, /\$AllowedPosts = @\('\/task', '\/notice', '\/say', '\/focus'\)/)
-  for (const m of src.matchAll(/Send-Dot '([^']+)'/g)) assert.ok(['/task', '/notice', '/say', '/focus'].includes(m[1]), m[1])
+  assert.match(src, /\$AllowedPosts = @\('\/task', '\/notice', '\/say', '\/focus', '\/pet'\)/)
+  for (const m of src.matchAll(/Send-Dot '([^']+)'/g)) assert.ok(['/task', '/notice', '/say', '/focus', '/pet'].includes(m[1]), m[1])
+  // 按键计数：回调只数次数，不读键值（不碰 lParam / KBDLLHOOKSTRUCT / vkCode），只在 Sync-Keys 里按用户开关安装
+  { const i = src.indexOf('static IntPtr Cb('); const body = src.slice(i, src.indexOf('public static bool Start', i)); assert.ok(i > 0); assert.doesNotMatch(body, /Marshal|PtrToStructure|vkCode|KBDLLHOOKSTRUCT|l\.To/) }
+  assert.equal(src.match(/\[DotPet\.KeyCounter\]::Start\(\)/g)?.length, 1)
+  { const i = src.indexOf('function Sync-Keys'); assert.ok(i > 0 && src.slice(i, i + 200).includes('[DotPet.KeyCounter]::Start()')) }
   // 打开 DSH：先直接切前台，失败才退回 dsh://open
   assert.match(src, /BringToFront\(\$DshMainPid\)/)
   // 闭包看不到脚本里的函数：事件处理不能用 GetNewClosure

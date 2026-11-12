@@ -76,3 +76,13 @@ test('过去的时间被标记', () => {
   assert.equal(parseWhen('今天上午9点 开会', NOW).past, true)
   assert.equal(parseWhen('明天9点 开会', NOW).past, false)
 })
+
+test('昨天、前天：补记过去的事，日期往前算，不会被当成明天', () => {
+  const now = new Date(2026, 10, 12, 13, 0)
+  const y = parseWhen('昨天10点 交季度报告', now)
+  assert.equal(y?.at.getTime(), new Date(2026, 10, 11, 10, 0).getTime())
+  assert.equal(y?.rest, '交季度报告')
+  assert.equal(y?.past, true)
+  assert.equal(parseWhen('前天下午3点 开会', now)?.at.getTime(), new Date(2026, 10, 10, 15, 0).getTime())
+  assert.equal(parseWhen('昨晚 写日记', now)?.at.getHours(), 20)
+})
