@@ -44,11 +44,10 @@ Inspired by ChatGPT Dots. All data stays on your machine.
 **Requirements:** DeepSeek Harness `>=0.2.0-rc.0 <0.3.0` and Node.js 22+ (bundled with DSH). No extra API key: Dot uses the model you already configured in DSH.
 
 ```bash
-git clone https://github.com/h958661134/dsh-plugin-dot.git
-dsh plugin --profile web add ./dsh-plugin-dot
+dsh plugin --profile web add github:h958661134/dsh-plugin-dot
 ```
 
-Desktop users can add the folder from the **Plugins** page instead. Then **quit DSH completely** (from the tray or Task Manager) and start it again. After the restart you'll find:
+For DSH Desktop, use `--profile desktop` and quit DSH first; append `#` plus a tag from [Releases](https://github.com/h958661134/dsh-plugin-dot/releases) (e.g. `#v1.2.0`) to pin a version. You can also `git clone https://github.com/h958661134/dsh-plugin-dot.git` and run `dsh plugin --profile web add ./dsh-plugin-dot`, or add the folder from the **Plugins** page in DSH Desktop. Then **quit DSH completely** (from the tray or Task Manager) and start it again. After the restart you'll find:
 
 - **Dot 总管** in the agent preset menu;
 - a pet in the bottom-right corner;

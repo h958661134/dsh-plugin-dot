@@ -42,23 +42,19 @@ Dot 是一个 DSH 插件。装上后会多出一个「Dot 总管」预设和一�
 
 **要求**：DeepSeek Harness `>=0.2.0-rc.0 <0.3.0`，Node.js 22 以上（DSH 自带）。不需要额外的 API key，Dot 用的是你在 DSH 里已经配好的模型。
 
-**1. 下载**
+**1. 安装到 DSH**
+
+一行命令，直接从 GitHub 装：
 
 ```bash
-git clone https://github.com/h958661134/dsh-plugin-dot.git
+dsh plugin --profile web add github:h958661134/dsh-plugin-dot
 ```
 
-也可以在 [Releases](https://github.com/h958661134/dsh-plugin-dot/releases) 下载源码压缩包并解压。
+桌面版把 `--profile web` 换成 `--profile desktop`，并且先退出 DSH。命令行里，桌面版的 `dsh` 在安装目录下的 `resources/runtime/cli/bin/dsh.cmd`。想固定版本，在末尾加 `#` 和 [Releases](https://github.com/h958661134/dsh-plugin-dot/releases) 里的版本号，比如 `#v1.2.0`。
 
-**2. 安装到 DSH**
+也可以先下载再装：`git clone https://github.com/h958661134/dsh-plugin-dot.git`（或在 [Releases](https://github.com/h958661134/dsh-plugin-dot/releases) 下载源码压缩包），然后 `dsh plugin --profile web add ./dsh-plugin-dot`；桌面版用户也可以在 DSH 的「插件」页面添加这个目录。
 
-```bash
-dsh plugin --profile web add ./dsh-plugin-dot
-```
-
-桌面版用户可以在 DSH 的「插件」页面添加这个目录。命令行里，桌面版的 `dsh` 在安装目录下的 `resources/runtime/cli/bin/dsh.cmd`。
-
-**3. 完全退出 DSH 再打开**
+**2. 完全退出 DSH 再打开**
 
 只关窗口不够，要从托盘或任务管理器里退出。重新打开后：
 
@@ -66,7 +62,7 @@ dsh plugin --profile web add ./dsh-plugin-dot
 - 窗口右下角出现小精灵；
 - 左侧栏多一个「会话总览」入口。
 
-**4. 跟它说第一句话**
+**3. 跟它说第一句话**
 
 选中 Dot 总管，随便说一件你这周要办的事，比如「周五前把报价单发给老王，到时候提醒我」。第一次见面时，Dot 会在回复末尾介绍自己，并问你要不要每天早上 9 点发简报。
 

@@ -38,6 +38,12 @@
     "dsh": ">=0.2.0-rc.0 <0.3.0"
   },
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/h958661134/dsh-plugin-dot.git"
+  },
+  "homepage": "https://github.com/h958661134/dsh-plugin-dot#readme",
+  "bugs": "https://github.com/h958661134/dsh-plugin-dot/issues",
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"

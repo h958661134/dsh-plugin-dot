@@ -38,3 +38,7 @@ dsh --profile web --no-open --port 3999
 - 每个改动都配上测试，提交前跑一遍 `npm test`。
 - 改了界面，在 PR 里附截图。
 - 新增「替用户做事」的能力时，先想清楚它属于哪一类：只读、起草后等用户点、还是必须交给用户亲自做。默认选更保守的那一类，理由见 [README 的安全模型](README.md#安全模型)。
+
+## 发版
+
+维护者发新版本时，照 [docs/RELEASE.md](docs/RELEASE.md) 走一遍：测试、版本号、README、Release，以及之后在各社区渠道怎么更新。
