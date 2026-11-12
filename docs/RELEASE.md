@@ -24,11 +24,13 @@
 | 渠道 | 首次 | 之后每个版本 |
 |---|---|---|
 | GitHub topic（`dsh-plugin` 等） | 已加 | 不用动。dsh.so 和 awesome 列表的全量目录按这个 topic 自动索引 |
-| [awesome-dsh-plugins](https://github.com/cccakeee/awesome-dsh-plugins) | 提 PR，在 `data/verified-plugins.csv` 和 README「Agent、自动化与工作流」各加一行 | 只有能力描述、安装方式、权限或兼容的 DSH 版本变了，才提 PR 改这两行。小版本不用提 |
+| [awesome-dsh-plugins](https://github.com/cccakeee/awesome-dsh-plugins) | 已提 [PR #68](https://github.com/cccakeee/awesome-dsh-plugins/pull/68)：在 `data/verified-plugins.csv` 加一行，再运行 `python scripts/generate_docs.py` 重新生成 README 和分类页（README 不要手改；Windows 上生成后要把 CRLF 换回 LF） | 只有能力描述、安装方式、权限或兼容的 DSH 版本变了，才提 PR 改这两行。小版本不用提 |
 | [deepseekharnessplugins.com](https://deepseekharnessplugins.com/submit) | 跟着 awesome 列表同步 | 同上，不用单独操作 |
 | [dsh.so](https://www.dsh.so/zh/submit/) | 用检查器检查后提交；topic 也会被自动索引 | 星标、提交时间自动同步。大版本可以再跑一次检查器 |
-| 官方 Discussions「Show Your Plugins!」 | 按置顶帖 #2004 的格式发一帖 | **不要再开新帖**（规则写明重复帖会被删）。在原帖下回复一条更新说明：版本号、两三条亮点、一张新图，并把原帖正文里过时的地方改掉 |
+| 官方 Discussions「Show Your Plugins!」 | 已发 [#13048](https://github.com/deepseek-ai/deepseek-harness/discussions/13048)（格式按置顶帖 #2004） | **不要再开新帖**（规则写明重复帖会被删）。在原帖下回复一条更新说明：版本号、两三条亮点、一张新图，并把原帖正文里过时的地方改掉 |
 | npm（可选） | 用作者自己的账号 `npm login` 后 `npm publish --access public` | 每个版本 `npm publish`。发了 npm 之后，README 的安装命令可以改成包名 |
+
+升级方式已实测：不带 `#tag` 安装的用户，重新运行同一条 `dsh plugin … add github:…` 命令就会拿到最新提交。
 
 ### Discussions 更新回复的模板
 
