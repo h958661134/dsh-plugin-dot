@@ -79,6 +79,28 @@ async function call(handler, body, url = '/') {
   return { code: res.statusCode, ...out }
 }
 
+test('精灵形象：桌面和网页读同一图鉴，换角色持久化且保留名字、颜色与生活数据', async () => {
+  const { routes, store } = await hostSetup()
+  await store.mutate(s => { s.prefs.pet = { name: '小棉', color: 'green' }; s.prefs.life = { outfit: 'scarf' } })
+  const catalog = await call(routes['/api/dsh-plugin-dot/pet/catalog'])
+  assert.equal(catalog.characters.length, 3)
+  assert.equal(catalog.gestures.length, 6)
+  const pet = routes['/api/dsh-plugin-dot/pet']
+  assert.equal((await call(pet, { action: 'character', id: 'missing' })).code, 400)
+  assert.equal((await call(pet, { action: 'motion', value: 'invalid' })).code, 400)
+  assert.equal((await call(pet, { action: 'character', id: 'bunny' })).ok, true)
+  assert.equal((await call(pet, { action: 'motion', value: 'reduced' })).ok, true)
+  assert.deepEqual(store.snapshot().prefs.pet, { name: '小棉', color: 'green', character: 'bunny', motion: 'reduced' })
+  assert.equal(store.snapshot().prefs.life.outfit, 'scarf')
+  const s = await call(routes['/api/dsh-plugin-dot/status'], null, '/status?desk=1')
+  assert.equal(s.petArt.id, 'bunny')
+  assert.equal(s.pet.motion, 'reduced')
+  assert.equal(s.desk.life.outfit, 'scarf')
+  assert.equal(s.desk.name, '小棉')
+  const data = await call(routes['/api/dsh-plugin-dot/data'])
+  assert.equal(data.petCharacters.length, 3)
+})
+
 test('/focus：桌面精灵交来的跳转目标出现在 /status 里，网页端回执后清掉；/status?desk=1 带卡片', async () => {
   const { routes } = await hostSetup()
   const focus = routes['/api/dsh-plugin-dot/focus']

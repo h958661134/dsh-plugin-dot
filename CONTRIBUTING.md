@@ -33,6 +33,22 @@ dsh --profile web --no-open --port 3999
 
 改了代码要重启这个 DSH 才会生效。
 
+### 单独预览界面
+
+不启动 DSH，也可以在浏览器检查真实的插件组件：
+
+```bash
+npm install --prefix .preview --ignore-scripts --no-audit --no-fund react@18.3.1 react-dom@18.3.1
+node scripts/preview-ui.mjs
+```
+
+打开 `http://127.0.0.1:4173`。顶部可以切换今天、待办、会话总览与深浅主题。
+用 `?view=tasks&width=320&theme=dark` 检查窄侧栏，用 `&empty=1` 或 `&offline=1` 检查空状态和断线提示。
+预览使用 `lib/bridge.js` 和浏览器内的演示数据，支持添加与完成演示待办，其他写操作只返回演示回执；刷新即还原，不读写日常 DSH 数据。
+预览依赖仅放在忽略的 `.preview` 目录里，不会进入插件发布包。
+
+精灵的独立预览不需要安装依赖：`node scripts/preview-pet.mjs`，然后打开 `http://127.0.0.1:4174`。形象和动作的扩展约定见 [精灵图鉴](lib/pets/README.md)。
+
 ## 提交改动
 
 - 每个改动都配上测试，提交前跑一遍 `npm test`。

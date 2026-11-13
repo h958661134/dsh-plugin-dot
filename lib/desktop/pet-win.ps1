@@ -363,9 +363,13 @@ $MaxCards = 3
             <RotateTransform x:Name="PetRot" Angle="0"/>
             <TranslateTransform x:Name="PetHop" Y="0"/>
             <TranslateTransform x:Name="PetBob" Y="0"/>
+            <ScaleTransform x:Name="GestureScale" ScaleX="1" ScaleY="1"/>
+            <RotateTransform x:Name="GestureRot" Angle="0"/>
+            <TranslateTransform x:Name="GestureHop" Y="0"/>
           </TransformGroup>
         </Grid.RenderTransform>
         <Canvas Width="56" Height="66">
+          <Canvas x:Name="CharacterBack" IsHitTestVisible="False"/>
           <Ellipse x:Name="FootL" Canvas.Left="12" Canvas.Top="54" Width="13" Height="8" Fill="#3A4A8C"/>
           <Ellipse x:Name="FootR" Canvas.Left="31" Canvas.Top="54" Width="13" Height="8" Fill="#3A4A8C"/>
           <Path x:Name="Ahoge" Data="M28,12 C27,5 31,1 35,3" Stroke="#4D6BFE" StrokeThickness="2.4" StrokeStartLineCap="Round" StrokeEndLineCap="Round">
@@ -381,6 +385,7 @@ $MaxCards = 3
             <Border.Effect><DropShadowEffect BlurRadius="8" ShadowDepth="1.5" Opacity="0.25"/></Border.Effect>
           </Border>
           <Ellipse x:Name="Shine" Canvas.Left="11" Canvas.Top="15" Width="10" Height="6" Fill="#55FFFFFF"/>
+          <Canvas x:Name="CharacterFront" IsHitTestVisible="False"/>
           <Ellipse x:Name="CheekL" Canvas.Left="9" Canvas.Top="35" Width="9" Height="5" Fill="#88FF7FA8" Visibility="Collapsed"/>
           <Ellipse x:Name="CheekR" Canvas.Left="38" Canvas.Top="35" Width="9" Height="5" Fill="#88FF7FA8" Visibility="Collapsed"/>
           <Rectangle x:Name="EyeL" Canvas.Left="17" Canvas.Top="22" Width="6" Height="12" RadiusX="3" RadiusY="3" Fill="White"/>
@@ -391,6 +396,12 @@ $MaxCards = 3
           <Path x:Name="EyeRO" Canvas.Left="32" Canvas.Top="24" Data="M0.5,4 A3.5,3.5 0 1 1 7.5,4 A3.5,3.5 0 1 1 0.5,4 M2.8,4 A1.2,1.2 0 1 1 5.2,4" Stroke="White" StrokeThickness="1.4" Visibility="Collapsed"/>
           <Path x:Name="Mouth" Canvas.Left="23" Canvas.Top="37" Stroke="White" StrokeThickness="1.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"/>
           <Path x:Name="Sweat" Canvas.Left="45" Canvas.Top="12" Data="M3,0 Q6,5 6,7 A3,3 0 1 1 0,7 Q0,5 3,0 Z" Fill="#B5DCFF" Stroke="#7FB8F0" StrokeThickness="0.8" Visibility="Collapsed"/>
+          <Ellipse x:Name="ArmL" Canvas.Left="0" Canvas.Top="33" Width="8" Height="14" Fill="#4D6BFE" IsHitTestVisible="False">
+            <Ellipse.RenderTransform><TransformGroup><RotateTransform x:Name="ArmLRot" CenterX="4" CenterY="7"/><TranslateTransform x:Name="ArmLMove"/></TransformGroup></Ellipse.RenderTransform>
+          </Ellipse>
+          <Ellipse x:Name="ArmR" Canvas.Left="48" Canvas.Top="33" Width="8" Height="14" Fill="#4D6BFE" IsHitTestVisible="False">
+            <Ellipse.RenderTransform><TransformGroup><RotateTransform x:Name="ArmRRot" CenterX="4" CenterY="7"/><TranslateTransform x:Name="ArmRMove"/></TransformGroup></Ellipse.RenderTransform>
+          </Ellipse>
           <Canvas x:Name="OScarf" Visibility="Collapsed">
             <Path Data="M6,44 Q28,52 50,44 L50,49 Q28,57 6,49 Z" Fill="#EF5B5B"/>
             <Path Data="M36,48 L41,60 L35,59 L32,50 Z" Fill="#D94848"/>
@@ -554,6 +565,7 @@ $MaxCards = 3
 $window = [Windows.Markup.XamlReader]::Load((New-Object System.Xml.XmlNodeReader $xaml))
 $ui = @{}
 foreach ($n in 'Root', 'Stage', 'Pet', 'PetFlip', 'PetScale', 'PetBreath', 'PetRot', 'PetHop', 'PetBob', 'Bubble', 'BubbleText', 'EyeL', 'EyeR', 'EyeLX', 'EyeRX', 'EyeLO', 'EyeRO',
+  'GestureScale', 'GestureRot', 'GestureHop', 'CharacterBack', 'CharacterFront', 'ArmL', 'ArmR', 'ArmLRot', 'ArmRRot', 'ArmLMove', 'ArmRMove',
   'Mouth', 'CheekL', 'CheekR', 'Sweat', 'Shine', 'FootL', 'FootR', 'Ahoge', 'AhogeRot', 'Body', 'Shadow', 'RingBox', 'Ring', 'Carry', 'CarryRot', 'CarryText', 'Fx', 'Keyboard',
   'OScarf', 'OLeaf', 'OCap', 'OHeadphones', 'OBow', 'OCrown', 'StatsText', 'StatsBox', 'KeysBtn', 'StatsBars', 'StatsNote', 'FocusRow', 'FocusStopBtn', 'FocusText',
   'Top', 'Bottom', 'AvTop', 'AvBottom', 'Panel', 'CloseBtn', 'PauseBtn',
@@ -563,6 +575,7 @@ foreach ($n in 'Root', 'Stage', 'Pet', 'PetFlip', 'PetScale', 'PetBreath', 'PetR
 }
 function New-Brush([string]$hex) { New-Object Windows.Media.SolidColorBrush ([Windows.Media.ColorConverter]::ConvertFromString($hex)) }
 function Now-Ms { [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() }
+. (Join-Path $PSScriptRoot 'pet-art.ps1')
 
 # ── 异步请求：发出去就返回，结果由 40ms 一次的定时器取回，交给指定的处理函数（按名字调用）──
 $script:pending = New-Object System.Collections.ArrayList
@@ -705,36 +718,43 @@ function Move-StageTo([double]$x) {
 }
 # 按下：缩一下；弹起：回弹
 function Squash([double]$to) {
+  if (Reduced-Motion) { return }
   $a = New-Anim $ui.PetScale.ScaleX $to 90
   $ui.PetScale.BeginAnimation([Windows.Media.ScaleTransform]::ScaleXProperty, $a)
   $ui.PetScale.BeginAnimation([Windows.Media.ScaleTransform]::ScaleYProperty, $a)
 }
 function Bounce {
+  if (Reduced-Motion) { return }
   $a = New-Keys @(@(0, 1.0), @(110, 1.14), @(220, 0.94), @(320, 1.0))
   $ui.PetScale.BeginAnimation([Windows.Media.ScaleTransform]::ScaleXProperty, $a)
   $ui.PetScale.BeginAnimation([Windows.Media.ScaleTransform]::ScaleYProperty, $a)
 }
 # 落地：压扁再弹回
 function Land-Squish {
+  if (Reduced-Motion) { return }
   $ui.PetScale.BeginAnimation([Windows.Media.ScaleTransform]::ScaleYProperty, (New-Keys @(@(0, 0.78), @(140, 1.08), @(260, 1.0))))
   $ui.PetScale.BeginAnimation([Windows.Media.ScaleTransform]::ScaleXProperty, (New-Keys @(@(0, 1.2), @(140, 0.95), @(260, 1.0))))
 }
 # 伸懒腰：拉长、再缩回
 function Stretch {
+  if (Reduced-Motion) { return }
   $ui.PetScale.BeginAnimation([Windows.Media.ScaleTransform]::ScaleYProperty, (New-Keys @(@(0, 1.0), @(380, 1.16), @(700, 1.16), @(900, 0.94), @(1050, 1.0))))
   $ui.PetScale.BeginAnimation([Windows.Media.ScaleTransform]::ScaleXProperty, (New-Keys @(@(0, 1.0), @(380, 0.9), @(700, 0.9), @(900, 1.06), @(1050, 1.0))))
   Emote 'line' 'open' $false 1000
 }
 # 跳一下
 function Hop([double]$h = 12, [int]$ms = 360) {
+  if (Reduced-Motion) { return }
   $ui.PetHop.BeginAnimation([Windows.Media.TranslateTransform]::YProperty, (New-Keys @(@(0, 0), @([int]($ms * 0.45), -$h), @($ms, 0))))
 }
 # 有新的「需要你」：摇一摇
 function Shake {
+  if (Reduced-Motion) { return }
   $ui.PetRot.BeginAnimation([Windows.Media.RotateTransform]::AngleProperty, (New-Keys @(@(0, 0), @(70, -12), @(140, 10), @(210, -8), @(280, 6), @(350, -3), @(420, 0)) $false))
 }
 # 轻轻扭一扭（被摸、无聊时）
 function Wiggle {
+  if (Reduced-Motion) { return }
   $ui.PetRot.BeginAnimation([Windows.Media.RotateTransform]::AngleProperty, (New-Keys @(@(0, 0), @(120, 6), @(240, -6), @(360, 4), @(480, 0))))
 }
 
@@ -1206,6 +1226,8 @@ $ui.Pet.Add_MouseMove({
 })
 $ui.Pet.Add_MouseLeave({ $script:strokeX = $null; $script:strokeDir = 0 })
 function Pet-Stroked {
+  if ($script:quiet -or $script:paused -or @('focus', 'rest', 'held', 'fall') -contains $script:act -or @('waiting', 'alert', 'busy') -contains $script:mood) { return }
+  if ($script:petCatalog -and $script:act -eq 'idle') { Play-Interaction 'cuddle' $true; return }
   if ($script:act -eq 'sleep') { Set-Act 'idle'; Wake-Up; return }
   if ($script:act -ne 'idle' -and $script:act -ne 'focus') { return }
   Emote 'happy' 'smile' $true 1600
@@ -1231,6 +1253,10 @@ $miBrief = New-MenuItem '今日简报' 0xE787 ''; $miBrief.Add_Click({ Open-Pane
 $miStats = New-MenuItem '今日统计' 0xE9D2 '今天按小时的工作时长'; $miStats.Add_Click({ Open-Panel; Show-Stats $true })
 $miFocus = New-MenuItem '专注 25 分钟…' 0xE7F6 '在面板「今天」的待办上点耳机图标'; $miFocus.Add_Click({ Open-Panel; Show-Out '在下面「今天」的待办上点耳机图标，我陪你专注 25 分钟' $false })
 # 换装：一开始全部可选
+$miPlay = New-MenuItem '陪我玩一会儿' 0xE899 '挥手、抱抱、捉迷藏，忙碌和专注时先等一等'
+$miCharacters = New-MenuItem '换个小伙伴' 0xE734 '换形象，不影响名字、待办和装扮'
+$miMotion = New-MenuItem '少动一点' 0xE708 '减少动作和粒子，互动时只用表情回应'; $miMotion.IsCheckable = $true
+$miMotion.Add_Click({ Send-Dot '/pet' @{ action = 'motion'; value = $(if ($miMotion.IsChecked) { 'reduced' } else { 'auto' }) } 'On-ArtSaved' $null })
 $miOutfit = New-MenuItem '换装' 0xE771 ''
 $Outfits = @(@('none', '不戴', ''), @('scarf', '小围巾', '#EF5B5B'), @('leaf', '头顶小叶子', '#4CC38A'), @('cap', '鸭舌帽', '#2F3A56'), @('headphones', '耳机', '#F5A524'), @('bow', '蝴蝶结', '#FF7FA8'), @('crown', '小皇冠', '#FFC83D'))
 foreach ($o in $Outfits) {
@@ -1251,13 +1277,15 @@ $miPause = New-MenuItem '暂停 Dot' 0xE769 '暂停定时任务和有副作用�
 $miQuiet = New-MenuItem '安静模式' 0xE708 '不走动、不冒气泡'; $miQuiet.IsCheckable = $true
 $miExit = New-MenuItem '关掉桌面精灵' 0xE7E8 'DSH 重启后会再出现'; $miExit.Add_Click({ $window.Close() })
 function New-Sep { $x = New-Object Windows.Controls.Separator; $x.Style = $window.FindResource('Sep'); return $x }
-foreach ($mi in @($miOpen, $miSess, $miBrief, $miStats, (New-Sep), $miFocus, $miOutfit, $miGround, (New-Sep), $miPause, $miQuiet, (New-Sep), $miExit)) { [void]$menu.Items.Add($mi) }
+foreach ($mi in @($miOpen, $miSess, $miBrief, $miStats, (New-Sep), $miFocus, $miPlay, $miCharacters, $miOutfit, $miMotion, $miGround, (New-Sep), $miPause, $miQuiet, (New-Sep), $miExit)) { [void]$menu.Items.Add($mi) }
 $menu.Add_Opened({
   $miGround.Visibility = if ($script:edge -eq 'ground') { 'Collapsed' } else { 'Visible' }
   $miPause.Header = if ($script:paused) { '恢复 Dot' } else { '暂停 Dot' }
   $miPause.Icon = New-Glyph ([string][char]$(if ($script:paused) { 0xE768 } else { 0xE769 })) '#6B7280' 13
 })
 $ui.Pet.ContextMenu = $menu
+$ui.Pet.Add_MouseEnter({ $script:hoverSince = Now-Ms })
+$ui.Pet.Add_MouseLeave({ $script:hoverSince = 0 })
 
 # ── 桌宠的身体：颜色、表情、装扮、手里的东西、粒子 ──
 # 每个姿态都对应一个管理信号，见 docs/DESK-BUDDY.md「身体语言」
@@ -1278,6 +1306,7 @@ function Apply-Colors {
   $ui.Bottom.Color = [Windows.Media.ColorConverter]::ConvertFromString($c[1])
   $ui.Ahoge.Stroke = New-Brush $c[1]
   $ui.AvTop.Color = $ui.Top.Color; $ui.AvBottom.Color = $ui.Bottom.Color
+  Update-ArtColors
 }
 
 # 表情：眼睛（normal 竖条 / half 半闭 / line 闭眼 / dot 圆点 / wink 眨一只 / happy ^^ / dizzy 转圈）+ 嘴 + 腮红 + 汗
@@ -1416,6 +1445,7 @@ $script:quiet = $false; $script:sysQuiet = $false
 $script:stats = $null
 $script:focusInfo = $null; $script:restInfo = $null
 function Set-Act([string]$a) {
+  if ($a -ne 'idle') { Reset-Interaction }
   $script:act = $a
   if ($a -ne 'walk') {
     [Windows.Controls.Canvas]::SetTop($ui.FootL, 54); [Windows.Controls.Canvas]::SetTop($ui.FootR, 54)
@@ -1433,8 +1463,7 @@ function Set-Act([string]$a) {
 function Go-Sleep { Set-Act 'sleep' }
 function Wake-Up {
   if ($script:act -eq 'sleep' -or $script:act -eq 'rest') { Set-Act 'idle' }
-  Stretch
-  Hop 10 340
+  if ($script:petCatalog) { Play-Interaction 'wave' } elseif (-not (Reduced-Motion)) { Stretch; Hop 10 340 }
   $script:nextIdleAt = (Now-Ms) + 8000
 }
 function Set-Typing([bool]$on) {
@@ -1445,6 +1474,8 @@ function Set-Typing([bool]$on) {
 }
 # 勾掉一件待办：一颗星星飞进嘴里，嚼一嚼，开心一下
 function Feed {
+  Reset-Interaction
+  if ((Reduced-Motion) -or $script:quiet -or $script:act -eq 'focus') { Emote 'happy' 'smile' $true 750; return }
   Spawn ([string][char]0x2605) '#FFC83D' 74 28 0 0 520 17 @(41, 90)
   $script:chewAt = (Now-Ms) + 480; $script:chewN = 6
 }
@@ -1548,10 +1579,11 @@ function Look-Around([double]$t) {
 # 空闲时的小动作，8~30 秒一次；安静、面板开着、鼠标在它身上时不做
 function Idle-Behavior([double]$t) {
   $script:nextIdleAt = $t + 8000 + $rand.Next(22000)
-  if ($script:quiet -or $ui.Panel.IsOpen -or $ui.Root.IsMouseOver) { return }
+  if ($script:quiet -or $script:hidden -or (Reduced-Motion) -or $script:interaction -or $ui.Panel.IsOpen -or $ui.Root.IsMouseOver) { return }
   if ($script:mood -ne 'idle' -and $script:mood -ne 'done') { return }
   $r = $rand.Next(100)
   if ($script:edge -eq 'ground' -and $r -lt 45 -and -not $script:typing) { Start-Walk; return }
+  if ($script:petCatalog -and $r -ge 45) { $names = @('wave', 'shy', 'peek', 'dance', 'stretch'); Play-Interaction $names[$rand.Next($names.Count)]; return }
   if ($r -lt 58) { Hop 12 360; return }
   if ($r -lt 70) { Stretch; return }
   if ($r -lt 80) { Emote 'wink' 'w' $false 700; return }
@@ -1602,6 +1634,8 @@ $script:lastSec = 0
 $script:infoAt = Now-Ms
 function Second-Tick([double]$t) {
   $script:secN++
+  if ($script:secN % 10 -eq 0) { Refresh-ArtCatalog }
+  if ($script:hoverSince -and $t - $script:hoverSince -gt 1500 -and $t -gt $script:hoverCool -and -not $ui.Panel.IsOpen) { $script:hoverSince = 0; $script:hoverCool = $t + 20000; Play-Interaction 'shy' }
   if ($script:secN % 5 -eq 0) { $script:sysQuiet = try { [DotPet.Input]::Quiet() } catch { $false } }
   $script:quiet = $script:sysQuiet -or $miQuiet.IsChecked
   $idle = [double][DotPet.Input]::IdleMs()
@@ -1625,23 +1659,24 @@ function Second-Tick([double]$t) {
   if ($script:act -eq 'sleep') { if ($idle -lt 1500) { Wake-Up } }
   elseif (($script:act -eq 'idle' -or $script:act -eq 'walk') -and ($idle -gt 300000 -or ($night -and $idle -gt 60000))) { Go-Sleep }
   if ($script:act -eq 'sleep' -or $script:act -eq 'rest') {
-    if ($script:secN % 2 -eq 0) { Spawn 'z' '#94A3B8' 60 62 0.35 -0.45 2000 (10 + $rand.Next(4)) }
+    if ($script:secN % 2 -eq 0 -and -not (Reduced-Motion) -and -not $script:quiet) { Spawn 'z' '#94A3B8' 60 62 0.35 -0.45 2000 (10 + $rand.Next(4)) }
   }
   if ($script:act -eq 'dizzy' -and $t -ge $script:dizzyUntil) { Set-Act 'idle'; Emote 'happy' 'smile' $false 700 }
   if ($script:act -eq 'idle' -and $t -ge $script:nextIdleAt) { Idle-Behavior $t }
   # 急事：举着包裹跳一跳
-  if ($script:carryUrgent -and $script:act -eq 'idle' -and -not $script:quiet -and ($script:secN % 4 -eq 0)) { Hop 10 300 }
+  if ($script:carryUrgent -and $script:act -eq 'idle' -and -not (Reduced-Motion) -and -not $script:quiet -and ($script:secN % 4 -eq 0)) { Hop 10 300 }
   if ($script:act -eq 'focus' -or $script:act -eq 'rest') { Update-Ring $t }
   Base-Face
 }
 function Engine-Tick {
   $t = [double](Now-Ms)
   $script:tickN++
+  Tick-Interaction $t
   if ($script:parts.Count) { Tick-Parts $t }
   if ($script:act -eq 'fall') { Step-Fall $t }
   elseif ($script:act -eq 'walk') { Step-Walk $t }
   # 呼吸、呆毛（贴边藏起来时看不见，不动它们，免得白白重绘透明窗口）
-  if (-not $script:hidden) {
+  if (-not $script:hidden -and -not (Reduced-Motion)) {
   $amp = if ($script:act -eq 'sleep' -or $script:act -eq 'rest') { 0.035 } else { 0.018 }
   $br = $script:breathBase + [Math]::Sin($t / 650.0) * $amp
   $ui.PetBreath.ScaleY = $br; $ui.PetBreath.ScaleX = 1 + (1 - $br) * 0.5
@@ -1667,7 +1702,7 @@ function Engine-Tick {
   # 省电：透明窗口是软件渲染的，每动一下就要重画整个窗口。走路、掉落、粒子、嚼东西、打字时 30 帧；
   # 平时 10 帧；睡觉 8 帧；贴边藏起来时 4 帧且不做呼吸动画
   $sleepy = $script:act -eq 'sleep' -or $script:act -eq 'rest'
-  $busy = ($script:parts.Count -and -not $sleepy) -or $script:chewN -or $script:typing -or $script:act -eq 'walk' -or $script:act -eq 'fall'
+  $busy = ($script:interaction -and -not $script:interaction.reduced) -or ($script:parts.Count -and -not $sleepy) -or $script:chewN -or $script:typing -or $script:act -eq 'walk' -or $script:act -eq 'fall'
   $ms = if ($busy) { 33 } elseif ($script:hidden) { 250 } elseif ($sleepy) { 125 } else { 100 }
   if ($engine.Interval.TotalMilliseconds -ne $ms) { $engine.Interval = [TimeSpan]::FromMilliseconds($ms) }
 }
@@ -1777,6 +1812,10 @@ function On-Status($s, $state) {
   }
   $script:failures = 0
   $script:paused = [bool]$s.paused
+  $script:motionPreference = [string]$s.pet.motion
+  Apply-Character $s.petArt
+  Update-CharacterMenu
+  if ((Reduced-Motion) -and $script:act -eq 'walk') { Set-Act 'idle'; Update-Layout }
   $miPause.Header = if ($script:paused) { '恢复 Dot' } else { '暂停 Dot' }
   $desk = $s.desk
   $script:desk = $desk
@@ -1945,6 +1984,7 @@ $window.Add_SourceInitialized({
   } catch { $script:hotkey = $false; Write-PetLog "hotkey setup failed: $_" }
 })
 $window.Add_ContentRendered({
+  Refresh-ArtCatalog
   Refresh
   if ($script:edge -ne 'ground') { Snap-Edge $script:edge }
   if ($FirstRun) { Flash '我住在任务栏上啦。单击打开面板，双击打开 Dot；摸摸我、把文字拖给我；拖到屏幕边上我会藏起来' 9; Hop 16 420 }
@@ -1960,5 +2000,6 @@ $window.Add_Closed({
 Set-Act 'idle'; Apply-Colors; Apply-Outfit
 $pump.Start(); $poll.Start(); $fast.Start(); $engine.Start()
 if ($rec) { $rec.Start() }
+if ($env:DOT_PET_ART_SHOTS) { $window.Opacity = 0; $window.ShowActivated = $false }
 [void]$window.Show()
 [Windows.Threading.Dispatcher]::Run()

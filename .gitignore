@@ -1,4 +1,5 @@
 node_modules/
+.preview/
 *.log
 .DS_Store
 state.json
