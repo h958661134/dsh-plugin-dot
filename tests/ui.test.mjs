@@ -238,7 +238,7 @@ test('会话筛选：只看在等你的会话；关闭搜索后迟到的响应�
   assert.doesNotMatch(textOf(tree), /迟到的结果|出现在.*会话里/)
 })
 
-test('精灵选择器：显示三个形象，切换形象与减少动作只提交对应偏好', async t => {
+test('精灵选择器：显示七个形象，切换形象与减少动作只提交对应偏好', async t => {
   const fixtures = structuredClone(FIXTURES)
   fixtures['/data'].petCharacters = PET_CHARACTERS
   const { r, registered, posts } = await loadBridge({ fixtures })
@@ -247,9 +247,9 @@ test('精灵选择器：显示三个形象，切换形象与减少动作只提�
   let tree = await r.render(el)
   findAll(tree, n => n.props.role === 'tab' && textOf(n).trim() === '规则')[0].props.onClick()
   tree = await r.render(el)
-  assert.match(textOf(tree), /小点.*棉花兔.*糯米猫/)
-  button(tree, '棉花兔').props.onClick()
+  assert.match(textOf(tree), /鲸鱼娘.*阳光男孩.*青春女孩.*书卷姑娘.*小点.*棉花兔.*糯米猫/)
+  button(tree, '阳光男孩').props.onClick()
   button(tree, '少动一点').props.onClick()
   await r.render(el)
-  assert.deepEqual(posts.slice(-2), [['/prefs', { pet: { character: 'bunny' } }], ['/prefs', { pet: { motion: 'reduced' } }]])
+  assert.deepEqual(posts.slice(-2), [['/prefs', { pet: { character: 'young-man' } }], ['/prefs', { pet: { motion: 'reduced' } }]])
 })

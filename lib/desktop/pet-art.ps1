@@ -1,7 +1,7 @@
 ﻿# 角色与动作适配层。只解释 Host 校验后的矢量数据，不加载外部 XAML 或脚本。
 $script:petCatalog = $null
 $script:catalogPending = $false
-$script:characterId = 'dot'
+$script:characterId = 'dot'; $script:lineArt = $false
 $script:characterKey = ''
 $script:artPaint = @()
 $script:motionPreference = 'auto'
@@ -21,9 +21,18 @@ function On-ArtCatalog($r, $state) {
   $script:catalogPending = $false
   if ($r.failed -or $r.version -ne 1) { return }
   $script:petCatalog = $r
+  $script:syncingCompanion = $true
+  $ui.CharacterSelect.Items.Clear()
+  foreach($group in @(@('dot-atlas-v1','卡通人物'),@('dot-vector-v1','简洁线条'))){
+    $items=@($r.characters | Where-Object {$_.renderer -eq $group[0]});if(-not $items.Count){continue}
+    $heading=New-Object Windows.Controls.ComboBoxItem;$heading.Content=$group[1];$heading.IsEnabled=$false;$heading.FontSize=11;$heading.Foreground=New-Brush '#858B99';[void]$ui.CharacterSelect.Items.Add($heading)
+    Companion-Options $ui.CharacterSelect @($items | ForEach-Object { ,@([string]$_.id,[string]$_.name) })
+  }
+  $script:syncingCompanion = $false
+  $ui.PlayActions.Children.Clear()
   $miCharacters.Items.Clear()
   foreach ($c in $r.characters) {
-    if ($c.renderer -ne 'dot-vector-v1') { continue }
+    if (@('dot-vector-v1', 'dot-atlas-v1') -notcontains $c.renderer) { continue }
     $mi = New-MenuItem ([string]$c.name) 0xE734 ([string]$c.description)
     $mi.Tag = [string]$c.id; $mi.IsCheckable = $true
     $mi.Add_Click({ param($sender, $e) Send-Dot '/pet' @{ action = 'character'; id = [string]$sender.Tag } 'On-ArtSaved' $null })
@@ -31,6 +40,11 @@ function On-ArtCatalog($r, $state) {
   }
   $miPlay.Items.Clear()
   foreach ($g in $r.gestures) {
+    $button = New-Object Windows.Controls.Button
+    $button.Style = $window.FindResource('Ghost'); $button.Content = [string]$g.name; $button.Tag = [string]$g.id
+    $button.Margin = [Windows.Thickness]::new(0, 0, 6, 6); $button.Padding = [Windows.Thickness]::new(9, 6, 9, 6)
+    $button.Add_Click({ param($sender, $e) Play-Interaction ([string]$sender.Tag) $true })
+    [void]$ui.PlayActions.Children.Add($button)
     $mi = New-MenuItem ([string]$g.name) 0xE899 '一个短短的小动作，不记分、不打卡'
     $mi.Tag = [string]$g.id
     $mi.Add_Click({ param($sender, $e) Play-Interaction ([string]$sender.Tag) $true })
@@ -42,12 +56,16 @@ function On-ArtCatalog($r, $state) {
 function On-ArtSaved($r, $state) {
   if ($r.ok -and $r.pet) {
     $script:motionPreference = [string]$r.pet.motion
+    $script:followInput = $r.pet.followInput -ne $false
+    Set-Posture ([string]$r.pet.posture)
     if ($script:petCatalog) {
       $c = @($script:petCatalog.characters | Where-Object { $_.id -eq $r.pet.character })
       if ($c.Count) { Apply-Character $c[0] }
     }
     if (Reduced-Motion) { Reset-Interaction }
     Update-CharacterMenu
+    Sync-CompanionInput
+    Sync-CompanionControls $r.pet
     Refresh
   }
   On-OpDone $r $state
@@ -58,8 +76,8 @@ function Update-CharacterMenu {
 }
 function Art-Brush([string]$paint) {
   switch ($paint) {
-    'body' { New-Object Windows.Media.SolidColorBrush $ui.Bottom.Color }
-    'light' { New-Object Windows.Media.SolidColorBrush $ui.Top.Color }
+    'body' { Desk-BodyBrush }
+    'light' { Desk-CreamBrush }
     'face' { New-Brush '#FFFFFF' }
     'none' { $null }
     default { New-Brush $paint }
@@ -72,18 +90,32 @@ function Update-ArtColors {
   $ui.FootR.Fill = New-Object Windows.Media.SolidColorBrush $ui.Bottom.Color
   foreach ($p in $script:artPaint) {
     $p.shape.Fill = Art-Brush $p.fill
-    if ($p.stroke) { $p.shape.Stroke = Art-Brush $p.stroke }
+    if ($p.stroke) { $p.shape.Stroke = Art-Brush $p.stroke } elseif ($p.fill -eq 'body') { $p.shape.Stroke = Desk-InkBrush; $p.shape.StrokeThickness = 1.2 }
   }
 }
 function Apply-Character($art) {
+  if ($art -and $art.renderer -eq 'dot-atlas-v1') {
+    $key = $art | ConvertTo-Json -Depth 8 -Compress
+    if ($key -eq $script:characterKey) { return }
+    Reset-Interaction; Reset-Input
+    try {
+      $script:lineArt=$false;Apply-Atlas $art
+      $script:characterKey = $key; $script:characterId = [string]$art.id
+      Update-CharacterMenu
+      return
+    } catch { Write-PetLog "character atlas failed: $_"; $art = $null }
+  }
   if (-not $art -or $art.renderer -ne 'dot-vector-v1') { $art = [pscustomobject]@{ id = 'dot'; radius = 17; ahoge = $true; back = @(); front = @() } }
   $key = $art | ConvertTo-Json -Depth 8 -Compress
   if ($key -eq $script:characterKey) { return }
   Reset-Interaction
+  Reset-Input
+  Clear-Atlas
+  $script:lineArt=$art.style -eq 'soft-line-v2'
   $script:characterKey = $key; $script:characterId = [string]$art.id
   $ui.CharacterBack.Children.Clear(); $ui.CharacterFront.Children.Clear(); $script:artPaint = @()
   try {
-    $ui.Body.CornerRadius = [Windows.CornerRadius]::new([double]$art.radius)
+    $ui.Body.CornerRadius = [Windows.CornerRadius]::new([Math]::Max(21.0, [double]$art.radius))
     $ui.Ahoge.Visibility = if ($art.ahoge) { 'Visible' } else { 'Collapsed' }
     foreach ($layer in @(@($ui.CharacterBack, $art.back), @($ui.CharacterFront, $art.front))) {
       foreach ($p in @($layer[1])) {
@@ -99,9 +131,10 @@ function Apply-Character($art) {
     Update-ArtColors
   } catch {
     $ui.CharacterBack.Children.Clear(); $ui.CharacterFront.Children.Clear(); $script:artPaint = @()
-    $ui.Body.CornerRadius = [Windows.CornerRadius]::new(17); $ui.Ahoge.Visibility = 'Visible'; $script:characterId = 'dot'
+    $ui.Body.CornerRadius = [Windows.CornerRadius]::new(21); $ui.Ahoge.Visibility = 'Visible'; $script:characterId = 'dot'
     Write-PetLog "character fallback: $_"
   }
+  Update-Posture
   Update-CharacterMenu
 }
 function Reset-Interaction {
@@ -121,6 +154,9 @@ function Play-Interaction([string]$id, [bool]$manual = $false) {
   $found = @($script:petCatalog.gestures | Where-Object { $_.id -eq $id })
   if (-not $found.Count) { return }
   $g = $found[0]; $t = Now-Ms; $reduced = Reduced-Motion
+  Reset-Input
+  $script:spriteTouched=$t
+  if($id -eq 'peek' -and $script:spriteArt.animations.style -eq 'seated-v2' -and -not $script:artPreview){Close-Panel;$a=Here-Area;Snap-Edge $(if((Stage-Center) -lt ($a.Left+$a.Right)/2){'left'}else{'right'});Set-Hidden $true;$script:interactionCool=$t+2000;return}
   $duration = if ($reduced) { 750 } else { [double]$g.duration }
   $script:interaction = @{ gesture = $g; start = $t; duration = $duration; reduced = $reduced }
   $script:interactionCool = $t + $duration + 1000
@@ -145,8 +181,14 @@ function Tick-Interaction([double]$t) {
   $pose = @{}
   foreach ($k in $PoseDefaults.Keys) { $pose[$k] = [double]$left.$k + ([double]$right.$k - [double]$left.$k) * $ease }
   $ui.GestureScale.ScaleX = $pose.sx; $ui.GestureScale.ScaleY = $pose.sy; $ui.GestureRot.Angle = $pose.tilt; $ui.GestureHop.Y = $pose.lift
-  $ui.ArmLMove.X = $pose.lx; $ui.ArmLMove.Y = $pose.ly; $ui.ArmLRot.Angle = $pose.la
-  $ui.ArmRMove.X = $pose.rx; $ui.ArmRMove.Y = $pose.ry; $ui.ArmRRot.Angle = $pose.ra
+  if ($script:spriteArt) {
+    $ui.GestureScale.ScaleX = 1 + ($pose.sx - 1) * 0.2; $ui.GestureScale.ScaleY = 1 + ($pose.sy - 1) * 0.2
+    $ui.GestureRot.Angle = $pose.tilt * 0.18; $ui.GestureHop.Y = $pose.lift * 0.3
+    Update-AtlasFrame $t
+  }
+  $armX = if ($script:posture -eq 'desk') { 0.65 } else { 1.0 }; $armY = if ($script:posture -eq 'desk') { 1.25 } else { 1.0 }
+  $ui.ArmLMove.X = $pose.lx * $armX; $ui.ArmLMove.Y = $pose.ly * $armY; $ui.ArmLRot.Angle = $pose.la
+  $ui.ArmRMove.X = $pose.rx * $armX; $ui.ArmRMove.Y = $pose.ry * $armY; $ui.ArmRRot.Angle = $pose.ra
   if ($g.revealAt -and $p -ge [double]$g.revealAt) { Set-Face 'wink' 'smile' $true }
 }
 
@@ -205,9 +247,10 @@ function Start-ArtShots {
     if ($ui.GestureRot.Angle -ne 0 -or $ui.ArmRMove.Y -ne 0) { throw 'reduced motion moved the body' }
     Tick-Interaction ((Now-Ms) + 1000)
     if ($script:interaction) { throw 'gesture must release after finishing' }
+    Test-CompanionShots $dir $colors
     Apply-Character ([pscustomobject]@{ renderer = 'future-renderer' })
     if ($script:characterId -ne 'dot') { throw 'unknown renderer did not fall back' }
-    @{ ok = $true; frames = $count; characters = $script:petCatalog.characters.Count; gestures = $script:petCatalog.gestures.Count; checks = @('focus', 'waiting', 'quiet', 'reduced-motion', 'neutral-reset', 'renderer-fallback') } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $dir 'result.json') -Encoding UTF8
+    @{ ok = $true; frames = $count; characters = $script:petCatalog.characters.Count; gestures = $script:petCatalog.gestures.Count; checks = @('focus', 'waiting', 'quiet', 'reduced-motion', 'neutral-reset', 'renderer-fallback', 'desk-and-classic', 'immediate-two-hands', 'fixed-torso-finger-patches', 'blink-and-breath', 'held-and-hide-seek', 'immediate-sit-and-personality', 'taskbar-bounds', 'input-priority', 'outfits', 'three-panel-pages', 'hook-lifecycle') } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $dir 'result.json') -Encoding UTF8
   } catch {
     @{ ok = $false; frames = $count; error = [string]$_; stack = $_.ScriptStackTrace } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $dir 'result.json') -Encoding UTF8
     Write-PetLog "art preview failed: $_"

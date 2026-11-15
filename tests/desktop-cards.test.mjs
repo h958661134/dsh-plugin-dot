@@ -10,7 +10,45 @@ import { deskCards, deskSummary, deskView, fmtDue } from '../lib/petcards.js'
 
 beforeEach(() => hub.reset())
 
+test('桌边陪伴设置保留个性化与生活数据，输入回应不自动打开统计', async () => {
+  const { routes, store } = await hostSetup()
+  const initial = await call(routes['/api/dsh-plugin-dot/status'], null, '/api/dsh-plugin-dot/status?desk=1')
+  assert.equal(initial.pet.followInput, true)
+  assert.equal(initial.desk.stats.keysOn, false)
+  await store.mutate(s => { s.prefs.pet = { name: '小棉', color: 'green', character: 'bunny' }; s.prefs.life = { outfit: 'scarf', activity: { keys: false, hours: {} } } })
+  const pet = routes['/api/dsh-plugin-dot/pet']
+  assert.equal((await call(pet, { action: 'look', look: { posture: 'desk', followInput: true } })).ok, true)
+  assert.equal((await call(pet, { action: 'look', look: { posture: 'classic' } })).ok, true)
+  assert.equal((await call(pet, { action: 'look', look: { followInput: 'false' } })).code, 400)
+  assert.equal((await call(pet, { action: 'look', look: { posture: 'unknown' } })).code, 400)
+  assert.equal((await call(pet, { action: 'look', look: null })).code, 400)
+  const status = await call(routes['/api/dsh-plugin-dot/status'])
+  assert.deepEqual(status.pet, { name: '小棉', color: 'green', character: 'bunny', posture: 'classic', followInput: true })
+  assert.equal(status.petLife.outfit, 'scarf')
+  assert.equal(store.snapshot().prefs.life.activity.keys, false)
+  assert.equal((await call(pet, { action: 'look', look: { followInput: false } })).pet.followInput, false)
+  assert.equal((await call(routes['/api/dsh-plugin-dot/status'])).pet.followInput, false)
+})
+
 const NOW = new Date(2026, 10, 11, 14, 0).getTime()
+
+test('人物素材按清单提供本地 PNG，跨站读取被拒绝，不注册任意文件路由', async () => {
+  const { routes } = await hostSetup()
+  const catalog = await call(routes['/api/dsh-plugin-dot/pet/catalog'])
+  const assets = Object.keys(routes).filter(p => p.startsWith('/dsh-plugin-dot/pets/'))
+  const atlases = catalog.characters.filter(c=>c.renderer==='dot-atlas-v1').flatMap(c => [c.atlas, c.animations.typing, c.animations.life])
+  assert.equal(assets.length, new Set(atlases.map(a=>a.file)).size)
+  for (const atlas of atlases) {
+    const path = '/dsh-plugin-dot/pets/' + atlas.file, headers = {}; let body
+    const res = { statusCode: 200, setHeader: (k, v) => { headers[k] = v }, end: b => { body = b } }
+    await routes[path]({ method: 'GET', url: path, headers: { host: '127.0.0.1:3999' } }, res)
+    assert.equal(res.statusCode, 200); assert.equal(headers['content-type'], 'image/png')
+    assert.ok(Buffer.isBuffer(body)); assert.equal(body.readUInt32BE(16), atlas.width)
+    await routes[path]({ method: 'GET', url: path, headers: { host: '127.0.0.1:3999', origin: 'https://example.com' } }, res)
+    assert.equal(res.statusCode, 403)
+  }
+  assert.equal(routes['/dsh-plugin-dot/pets/unknown.png'], undefined)
+})
 
 test('桌面精灵卡片：顺序、按钮和网页小精灵一致', () => {
   const s = {
@@ -83,22 +121,22 @@ test('精灵形象：桌面和网页读同一图鉴，换角色持久化且保�
   const { routes, store } = await hostSetup()
   await store.mutate(s => { s.prefs.pet = { name: '小棉', color: 'green' }; s.prefs.life = { outfit: 'scarf' } })
   const catalog = await call(routes['/api/dsh-plugin-dot/pet/catalog'])
-  assert.equal(catalog.characters.length, 3)
-  assert.equal(catalog.gestures.length, 6)
+  assert.equal(catalog.characters.length, 7)
+  assert.equal(catalog.gestures.length, 8)
   const pet = routes['/api/dsh-plugin-dot/pet']
   assert.equal((await call(pet, { action: 'character', id: 'missing' })).code, 400)
   assert.equal((await call(pet, { action: 'motion', value: 'invalid' })).code, 400)
-  assert.equal((await call(pet, { action: 'character', id: 'bunny' })).ok, true)
+  assert.equal((await call(pet, { action: 'character', id: 'young-man' })).ok, true)
   assert.equal((await call(pet, { action: 'motion', value: 'reduced' })).ok, true)
-  assert.deepEqual(store.snapshot().prefs.pet, { name: '小棉', color: 'green', character: 'bunny', motion: 'reduced' })
+  assert.deepEqual(store.snapshot().prefs.pet, { name: '小棉', color: 'green', character: 'young-man', motion: 'reduced' })
   assert.equal(store.snapshot().prefs.life.outfit, 'scarf')
   const s = await call(routes['/api/dsh-plugin-dot/status'], null, '/status?desk=1')
-  assert.equal(s.petArt.id, 'bunny')
+  assert.equal(s.petArt.id, 'young-man')
   assert.equal(s.pet.motion, 'reduced')
   assert.equal(s.desk.life.outfit, 'scarf')
   assert.equal(s.desk.name, '小棉')
   const data = await call(routes['/api/dsh-plugin-dot/data'])
-  assert.equal(data.petCharacters.length, 3)
+  assert.equal(data.petCharacters.length, 7)
 })
 
 test('/focus：桌面精灵交来的跳转目标出现在 /status 里，网页端回执后清掉；/status?desk=1 带卡片', async () => {

@@ -26,7 +26,7 @@ $createdNew = $false
 $mutex = New-Object System.Threading.Mutex($true, $mutexName, [ref]$createdNew)
 if (-not $createdNew) { exit 0 }
 
-Add-Type -ReferencedAssemblies System.Net.Http -TypeDefinition @'
+Add-Type -ReferencedAssemblies System.Net.Http, WindowsBase -TypeDefinition @'
 using System;
 using System.Net.Http;
 using System.Runtime.InteropServices;
@@ -93,8 +93,8 @@ namespace DotPet {
   }
 
   /**
-   * 按键计数：低级键盘钩子，回调里只把次数 +1，不读键值、不看是哪个程序。
-   * 只在用户打开「数按键」时安装，关掉立即卸载。
+   * 输入脉冲：不读键值、不看是哪个程序；只在明确开启统计时累计次数。
+   * 「跟着我敲字」与「数按键」分别开关，两者都关闭时卸载钩子。
    */
   public static class KeyCounter {
     delegate IntPtr Proc(int code, IntPtr w, IntPtr l);
@@ -105,12 +105,26 @@ namespace DotPet {
     static IntPtr hook = IntPtr.Zero;
     static Proc proc;
     static long count;
+    static System.Windows.Threading.Dispatcher dispatcher;
+    static Action pulse;
+    static int queued;
+    public static bool React;
+    public static bool CountKeys;
+    public static void Bind(System.Windows.Threading.Dispatcher target, Action callback) { dispatcher = target; pulse = callback; }
     public static long Count { get { return System.Threading.Interlocked.Read(ref count); } }
     public static bool On { get { return hook != IntPtr.Zero; } }
     static IntPtr Cb(int code, IntPtr w, IntPtr l) {
       if (code >= 0) {
         long m = w.ToInt64();
-        if (m == 0x100 || m == 0x104) System.Threading.Interlocked.Increment(ref count); // WM_KEYDOWN / WM_SYSKEYDOWN
+        if (m == 0x100 || m == 0x104) {
+          if (CountKeys) System.Threading.Interlocked.Increment(ref count); // 不读取 l 指向的键值或文本
+          if (React && dispatcher != null && !dispatcher.HasShutdownStarted && System.Threading.Interlocked.CompareExchange(ref queued, 1, 0) == 0) {
+            dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Input, new Action(delegate {
+              System.Threading.Interlocked.Exchange(ref queued, 0);
+              if (React && pulse != null) pulse();
+            }));
+          }
+        }
       }
       return CallNextHookEx(hook, code, w, l);
     }
@@ -173,6 +187,37 @@ $MaxCards = 3
         Topmost="True" ShowInTaskbar="False" ResizeMode="NoResize"
         Width="$WinW" Height="$WinH" Title="Dot" FontFamily="Microsoft YaHei UI">
   <Window.Resources>
+    <Style TargetType="ComboBox">
+      <Setter Property="FontSize" Value="12"/><Setter Property="Foreground" Value="#374151"/>
+      <Setter Property="ItemContainerStyle">
+        <Setter.Value><Style TargetType="ComboBoxItem">
+          <Setter Property="Padding" Value="10,6"/>
+          <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ComboBoxItem">
+            <Border x:Name="ItemBorder" Background="Transparent" CornerRadius="6" Padding="{TemplateBinding Padding}"><ContentPresenter/></Border>
+            <ControlTemplate.Triggers><Trigger Property="IsHighlighted" Value="True"><Setter TargetName="ItemBorder" Property="Background" Value="#EDF1FF"/></Trigger></ControlTemplate.Triggers>
+          </ControlTemplate></Setter.Value></Setter>
+        </Style></Setter.Value>
+      </Setter>
+      <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ComboBox">
+        <Grid>
+          <ToggleButton Focusable="False" IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
+            <ToggleButton.Template><ControlTemplate TargetType="ToggleButton">
+              <Border x:Name="SelectBorder" Background="#FAFBFE" BorderBrush="#E3E6ED" BorderThickness="1" CornerRadius="8" Padding="10,7"><ContentPresenter/></Border>
+              <ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="SelectBorder" Property="BorderBrush" Value="#A5B5E0"/></Trigger></ControlTemplate.Triggers>
+            </ControlTemplate></ToggleButton.Template>
+            <DockPanel>
+              <TextBlock DockPanel.Dock="Right" Text="⌄" Foreground="#788195" Margin="8,0,0,0"/>
+              <ContentPresenter Content="{TemplateBinding SelectionBoxItem}" ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}" VerticalAlignment="Center" IsHitTestVisible="False"/>
+            </DockPanel>
+          </ToggleButton>
+          <Popup x:Name="PART_Popup" Placement="Bottom" AllowsTransparency="True" IsOpen="{TemplateBinding IsDropDownOpen}" PopupAnimation="Fade">
+            <Border Background="White" BorderBrush="#E3E6ED" BorderThickness="1" CornerRadius="9" Padding="4" Margin="0,3,0,0" MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}">
+              <ScrollViewer MaxHeight="220" CanContentScroll="True"><ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained"/></ScrollViewer>
+            </Border>
+          </Popup>
+        </Grid>
+      </ControlTemplate></Setter.Value></Setter>
+    </Style>
     <!-- 普通按钮：浅灰底，悬停加深 -->
     <Style x:Key="Btn" TargetType="Button">
       <Setter Property="Background" Value="#F2F4F7"/>
@@ -366,9 +411,12 @@ $MaxCards = 3
             <ScaleTransform x:Name="GestureScale" ScaleX="1" ScaleY="1"/>
             <RotateTransform x:Name="GestureRot" Angle="0"/>
             <TranslateTransform x:Name="GestureHop" Y="0"/>
+            <ScaleTransform x:Name="PostureScale" ScaleX="1" ScaleY="1"/>
           </TransformGroup>
         </Grid.RenderTransform>
-        <Canvas Width="56" Height="66">
+        <Canvas x:Name="VectorBody" Width="56" Height="66">
+          <Canvas x:Name="BodyRig">
+            <Canvas.RenderTransform><TransformGroup><ScaleTransform x:Name="InputBodyScale" CenterX="28" CenterY="56"/><RotateTransform x:Name="InputBodyRot" CenterX="28" CenterY="56"/><TranslateTransform x:Name="InputBodyMove"/></TransformGroup></Canvas.RenderTransform>
           <Canvas x:Name="CharacterBack" IsHitTestVisible="False"/>
           <Ellipse x:Name="FootL" Canvas.Left="12" Canvas.Top="54" Width="13" Height="8" Fill="#3A4A8C"/>
           <Ellipse x:Name="FootR" Canvas.Left="31" Canvas.Top="54" Width="13" Height="8" Fill="#3A4A8C"/>
@@ -382,9 +430,9 @@ $MaxCards = 3
                 <GradientStop x:Name="Bottom" Color="#4D6BFE" Offset="1"/>
               </LinearGradientBrush>
             </Border.Background>
-            <Border.Effect><DropShadowEffect BlurRadius="8" ShadowDepth="1.5" Opacity="0.25"/></Border.Effect>
           </Border>
-          <Ellipse x:Name="Shine" Canvas.Left="11" Canvas.Top="15" Width="10" Height="6" Fill="#55FFFFFF"/>
+          <Path x:Name="DeskBody" Data="M3,31 C3,17 12,9 28,9 C44,9 53,17 53,31 C57,42 55,53 47,55 Q28,59 9,55 C1,53 -1,42 3,31Z" StrokeThickness="1.3" StrokeLineJoin="Round" Visibility="Collapsed"/>
+          <Path x:Name="Shine" Data="M10,24 Q12,16 21,15" Stroke="#B0FFFFFF" StrokeThickness="2.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
           <Canvas x:Name="CharacterFront" IsHitTestVisible="False"/>
           <Ellipse x:Name="CheekL" Canvas.Left="9" Canvas.Top="35" Width="9" Height="5" Fill="#88FF7FA8" Visibility="Collapsed"/>
           <Ellipse x:Name="CheekR" Canvas.Left="38" Canvas.Top="35" Width="9" Height="5" Fill="#88FF7FA8" Visibility="Collapsed"/>
@@ -394,14 +442,36 @@ $MaxCards = 3
           <Path x:Name="EyeRX" Canvas.Left="32" Canvas.Top="25" Data="M0,6 L4,1 L8,6" Stroke="White" StrokeThickness="2.2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Visibility="Collapsed"/>
           <Path x:Name="EyeLO" Canvas.Left="16" Canvas.Top="24" Data="M0.5,4 A3.5,3.5 0 1 1 7.5,4 A3.5,3.5 0 1 1 0.5,4 M2.8,4 A1.2,1.2 0 1 1 5.2,4" Stroke="White" StrokeThickness="1.4" Visibility="Collapsed"/>
           <Path x:Name="EyeRO" Canvas.Left="32" Canvas.Top="24" Data="M0.5,4 A3.5,3.5 0 1 1 7.5,4 A3.5,3.5 0 1 1 0.5,4 M2.8,4 A1.2,1.2 0 1 1 5.2,4" Stroke="White" StrokeThickness="1.4" Visibility="Collapsed"/>
+          <Ellipse x:Name="EyeGlintL" Canvas.Left="18" Canvas.Top="25" Width="1.7" Height="1.7" Fill="#FFFDFA"/>
+          <Ellipse x:Name="EyeGlintR" Canvas.Left="34" Canvas.Top="25" Width="1.7" Height="1.7" Fill="#FFFDFA"/>
           <Path x:Name="Mouth" Canvas.Left="23" Canvas.Top="37" Stroke="White" StrokeThickness="1.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"/>
           <Path x:Name="Sweat" Canvas.Left="45" Canvas.Top="12" Data="M3,0 Q6,5 6,7 A3,3 0 1 1 0,7 Q0,5 3,0 Z" Fill="#B5DCFF" Stroke="#7FB8F0" StrokeThickness="0.8" Visibility="Collapsed"/>
-          <Ellipse x:Name="ArmL" Canvas.Left="0" Canvas.Top="33" Width="8" Height="14" Fill="#4D6BFE" IsHitTestVisible="False">
-            <Ellipse.RenderTransform><TransformGroup><RotateTransform x:Name="ArmLRot" CenterX="4" CenterY="7"/><TranslateTransform x:Name="ArmLMove"/></TransformGroup></Ellipse.RenderTransform>
-          </Ellipse>
-          <Ellipse x:Name="ArmR" Canvas.Left="48" Canvas.Top="33" Width="8" Height="14" Fill="#4D6BFE" IsHitTestVisible="False">
-            <Ellipse.RenderTransform><TransformGroup><RotateTransform x:Name="ArmRRot" CenterX="4" CenterY="7"/><TranslateTransform x:Name="ArmRMove"/></TransformGroup></Ellipse.RenderTransform>
-          </Ellipse>
+          </Canvas>
+          <Canvas x:Name="Keyboard" Visibility="Collapsed">
+            <Rectangle Canvas.Left="-5" Canvas.Top="53" Width="66" Height="13" RadiusX="4" RadiusY="4" Fill="#D7D9E9" Stroke="#8E90A5" StrokeThickness="1.1"/>
+            <Rectangle Canvas.Left="-5" Canvas.Top="51" Width="66" Height="12" RadiusX="4" RadiusY="4" Fill="#F9F8FF" Stroke="#8E90A5" StrokeThickness="1.1"/>
+            <Canvas x:Name="KeysL"><Canvas.RenderTransform><TranslateTransform x:Name="KeysLMove"/></Canvas.RenderTransform>
+              <Rectangle x:Name="KeyLightL" Canvas.Left="-1" Canvas.Top="52.5" Width="27" Height="8" RadiusX="2" RadiusY="2" Fill="#B8B9F2" Opacity="0"/>
+              <Path Data="M1,53 H6 Q7,53 7,54 V55.5 Q7,56.5 6,56.5 H1 Q0,56.5 0,55.5 V54 Q0,53 1,53 Z M10,53 H15 Q16,53 16,54 V55.5 Q16,56.5 15,56.5 H10 Q9,56.5 9,55.5 V54 Q9,53 10,53 Z M19,53 H24 Q25,53 25,54 V55.5 Q25,56.5 24,56.5 H19 Q18,56.5 18,55.5 V54 Q18,53 19,53 Z" Fill="#FFFEFD" Stroke="#B1ADC5" StrokeThickness="0.65"/>
+            </Canvas>
+            <Canvas x:Name="KeysR"><Canvas.RenderTransform><TranslateTransform x:Name="KeysRMove"/></Canvas.RenderTransform>
+              <Rectangle x:Name="KeyLightR" Canvas.Left="30" Canvas.Top="52.5" Width="27" Height="8" RadiusX="2" RadiusY="2" Fill="#B8B9F2" Opacity="0"/>
+              <Path Data="M32,53 H37 Q38,53 38,54 V55.5 Q38,56.5 37,56.5 H32 Q31,56.5 31,55.5 V54 Q31,53 32,53 Z M41,53 H46 Q47,53 47,54 V55.5 Q47,56.5 46,56.5 H41 Q40,56.5 40,55.5 V54 Q40,53 41,53 Z M50,53 H55 Q56,53 56,54 V55.5 Q56,56.5 55,56.5 H50 Q49,56.5 49,55.5 V54 Q49,53 50,53 Z" Fill="#FFFEFD" Stroke="#B1ADC5" StrokeThickness="0.65"/>
+            </Canvas>
+            <Rectangle Canvas.Left="14" Canvas.Top="58.3" Width="28" Height="2.8" RadiusX="1" RadiusY="1" Fill="#E4DFF5"/>
+            <Path x:Name="ImpactL" Data="M-4,44 L-7,40 M1,41 V36 M6,42 L8,38" Stroke="#A8A0D5" StrokeThickness="1.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Opacity="0"/>
+            <Path x:Name="ImpactR" Data="M50,42 L48,38 M55,41 V36 M60,44 L63,40" Stroke="#A8A0D5" StrokeThickness="1.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Opacity="0"/>
+          </Canvas>
+          <Canvas x:Name="HandL">
+            <Canvas.RenderTransform><TransformGroup><ScaleTransform x:Name="ArmLScale" CenterX="11" CenterY="49"/><RotateTransform x:Name="ArmLRot" CenterX="11" CenterY="49"/><TranslateTransform x:Name="ArmLMove"/></TransformGroup></Canvas.RenderTransform>
+            <Ellipse x:Name="ArmL" IsHitTestVisible="False"/>
+            <Path x:Name="PawL" StrokeThickness="0.7" Opacity="0.45"/>
+          </Canvas>
+          <Canvas x:Name="HandR">
+            <Canvas.RenderTransform><TransformGroup><ScaleTransform x:Name="ArmRScale" CenterX="45" CenterY="49"/><RotateTransform x:Name="ArmRRot" CenterX="45" CenterY="49"/><TranslateTransform x:Name="ArmRMove"/></TransformGroup></Canvas.RenderTransform>
+            <Ellipse x:Name="ArmR" IsHitTestVisible="False"/>
+            <Path x:Name="PawR" StrokeThickness="0.7" Opacity="0.45"/>
+          </Canvas>
           <Canvas x:Name="OScarf" Visibility="Collapsed">
             <Path Data="M6,44 Q28,52 50,44 L50,49 Q28,57 6,49 Z" Fill="#EF5B5B"/>
             <Path Data="M36,48 L41,60 L35,59 L32,50 Z" Fill="#D94848"/>
@@ -428,8 +498,18 @@ $MaxCards = 3
             <Path Data="M17,13 L19,2 L24,8 L28,0 L32,8 L37,2 L39,13 Z" Fill="#FFC83D" Stroke="#E0A20F" StrokeThickness="0.8" StrokeLineJoin="Round"/>
             <Ellipse Canvas.Left="26.5" Canvas.Top="7" Width="3" Height="3" Fill="#EF5B5B"/>
           </Canvas>
-          <Border x:Name="Keyboard" Canvas.Left="8" Canvas.Top="57" Width="40" Height="8" CornerRadius="2" Background="#E5E7EB" BorderBrush="#9CA3AF" BorderThickness="0.8" Visibility="Collapsed"/>
         </Canvas>
+        <Grid x:Name="SpriteRig" Width="180" Height="180" VerticalAlignment="Bottom" HorizontalAlignment="Center" Visibility="Collapsed" IsHitTestVisible="False" RenderTransformOrigin="0.5,1">
+          <Grid.RenderTransform><TransformGroup><ScaleTransform x:Name="AtlasScale"/><RotateTransform x:Name="AtlasRot"/><TranslateTransform x:Name="AtlasMove"/></TransformGroup></Grid.RenderTransform>
+          <Image x:Name="SpritePrevious" Width="180" Height="180" Stretch="Uniform" Opacity="0"/>
+          <Image x:Name="SpriteView" Width="180" Height="180" Stretch="Uniform"/>
+          <Canvas x:Name="AtlasParts" Width="180" Height="180">
+            <Image x:Name="AtlasBlink" Stretch="Fill" Opacity="0"/><Image x:Name="AtlasFingerL" Stretch="Fill" Opacity="0"/><Image x:Name="AtlasFingerR" Stretch="Fill" Opacity="0"/>
+            <Rectangle x:Name="AtlasKeyL" RadiusX="0.6" RadiusY="0.6" Fill="#8EACC6" Opacity="0"/><Rectangle x:Name="AtlasKeyR" RadiusX="0.6" RadiusY="0.6" Fill="#8EACC6" Opacity="0"/>
+            <Path x:Name="AtlasContactL" Data="M57,157 l-4,-6 M67,153 v-6 M77,157 l4,-6" Stroke="#B3B9DF" StrokeThickness="2.2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Opacity="0"/>
+            <Path x:Name="AtlasContactR" Data="M106,157 l-4,-6 M116,153 v-6 M126,157 l4,-6" Stroke="#B3B9DF" StrokeThickness="2.2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Opacity="0"/>
+          </Canvas>
+        </Grid>
         <Border x:Name="Carry" Visibility="Collapsed" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-6,-18,0"
                 MinWidth="22" Height="20" CornerRadius="4" Background="#F5A524" Padding="5,0" BorderBrush="White" BorderThickness="1.5">
           <Border.RenderTransform><RotateTransform x:Name="CarryRot" Angle="8" CenterX="11" CenterY="10"/></Border.RenderTransform>
@@ -447,7 +527,8 @@ $MaxCards = 3
           <DockPanel Margin="16,14,10,0">
             <Button x:Name="CloseBtn" DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Content="&#xE711;" ToolTip="收起（Esc）"/>
             <Button x:Name="PauseBtn" DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Content="&#xE769;" ToolTip="暂停或恢复 Dot 的定时任务和有副作用的操作"/>
-            <Border Width="32" Height="32" CornerRadius="11" Margin="0,0,10,0" VerticalAlignment="Center">
+            <Image x:Name="AvatarPortrait" Width="38" Height="38" Stretch="UniformToFill" Margin="0,0,10,0" Visibility="Collapsed"/>
+            <Border x:Name="AvatarLegacy" Width="36" Height="34" CornerRadius="15" BorderBrush="#A3A1B5" BorderThickness="1" Margin="0,0,10,0" VerticalAlignment="Center">
               <Border.Background>
                 <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
                   <GradientStop x:Name="AvTop" Color="#8AA2FF" Offset="0"/>
@@ -455,8 +536,11 @@ $MaxCards = 3
                 </LinearGradientBrush>
               </Border.Background>
               <Canvas Width="32" Height="32">
-                <Rectangle Canvas.Left="10" Canvas.Top="11" Width="3.6" Height="8" RadiusX="1.8" RadiusY="1.8" Fill="White"/>
-                <Rectangle Canvas.Left="18.4" Canvas.Top="11" Width="3.6" Height="8" RadiusX="1.8" RadiusY="1.8" Fill="White"/>
+                <Ellipse Canvas.Left="5" Canvas.Top="19" Width="7" Height="3.5" Fill="#60F3A9BE"/>
+                <Ellipse Canvas.Left="21" Canvas.Top="19" Width="7" Height="3.5" Fill="#60F3A9BE"/>
+                <Rectangle Canvas.Left="10" Canvas.Top="12" Width="3.6" Height="5" RadiusX="1.8" RadiusY="1.8" Fill="#686477"/>
+                <Rectangle Canvas.Left="19" Canvas.Top="12" Width="3.6" Height="5" RadiusX="1.8" RadiusY="1.8" Fill="#686477"/>
+                <Path Data="M13,20 Q15,23 16.5,20 Q18,23 20,20" Stroke="#686477" StrokeThickness="1.1" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
               </Canvas>
             </Border>
             <StackPanel VerticalAlignment="Center">
@@ -464,7 +548,14 @@ $MaxCards = 3
               <TextBlock x:Name="SummaryText" Margin="0,1,0,0" FontSize="11.5" Foreground="#6B7280" TextWrapping="Wrap" MaxHeight="34" TextTrimming="CharacterEllipsis"/>
             </StackPanel>
           </DockPanel>
-          <StackPanel Margin="16,10,16,0">
+          <UniformGrid Columns="3" Margin="16,12,16,0">
+            <Button x:Name="TabToday" Style="{StaticResource Ghost}" Content="今天" Padding="0,7"/>
+            <Button x:Name="TabCompany" Style="{StaticResource Ghost}" Content="陪伴" Padding="0,7"/>
+            <Button x:Name="TabLook" Style="{StaticResource Ghost}" Content="外观" Padding="0,7"/>
+          </UniformGrid>
+          <ScrollViewer x:Name="PanelScroll" MaxHeight="520" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+          <Grid>
+          <StackPanel x:Name="TodayPage" Margin="16,10,16,0">
             <TextBlock x:Name="StatsText" FontSize="11.5" Foreground="#9CA3AF" TextWrapping="Wrap" Cursor="Hand" ToolTip="点开看今天按小时的统计"/>
             <Border x:Name="StatsBox" Visibility="Collapsed" Margin="0,8,0,0" CornerRadius="12" Padding="12,10" Background="#F7F8FA">
               <StackPanel>
@@ -533,11 +624,45 @@ $MaxCards = 3
               </DockPanel>
             </Border>
             <WrapPanel x:Name="Quick" Margin="0,8,0,0"/>
+
+          </StackPanel>
+          <StackPanel x:Name="CompanyPage" Visibility="Collapsed" Margin="18,18,18,14">
+            <TextBlock Text="按你的节奏来。" FontSize="16" Foreground="#334155" Margin="0,0,0,14"/>
+            <CheckBox x:Name="FollowInputCheck" Content="跟着我敲字" FontSize="12" Margin="0,0,0,12"/>
+            <TextBlock Text="默认陪你敲字，随时可以关闭。人物版在桌边姿态跟敲；只回应节奏，不读取内容，不开启统计。" FontSize="11" Foreground="#788195" TextWrapping="Wrap" Margin="0,0,0,14"/>
+            <CheckBox x:Name="MotionCheck" Content="少动一点" FontSize="12" Margin="0,0,0,12"/>
+            <CheckBox x:Name="QuietCheck" Content="安静陪伴" FontSize="12" Margin="0,0,0,18"/>
+            <TextBlock Text="陪我玩一会儿" FontSize="12" Foreground="#788195" Margin="0,0,0,8"/>
+            <WrapPanel x:Name="PlayActions"/>
+            <TextBlock Text="有事等你、专注或全屏时，先安静陪你。" FontSize="11" Foreground="#788195" TextWrapping="Wrap" Margin="0,12,0,0"/>
+          </StackPanel>
+          <StackPanel x:Name="LookPage" Visibility="Collapsed" Margin="18,18,18,14">
+            <TextBlock Text="换一种陪伴。" FontSize="16" Foreground="#334155" Margin="0,0,0,12"/>
+            <TextBlock Text="陪伴姿态" FontSize="12" Foreground="#788195"/>
+            <ComboBox x:Name="PostureSelect" Margin="0,5,0,12" Padding="8,5"/>
+            <TextBlock Text="小伙伴" FontSize="12" Foreground="#788195"/>
+            <ComboBox x:Name="CharacterSelect" Margin="0,5,0,12" Padding="8,5"/>
+            <StackPanel x:Name="OutfitRow">
+            <TextBlock Text="装扮" FontSize="12" Foreground="#788195"/>
+            <ComboBox x:Name="OutfitSelect" Margin="0,5,0,12" Padding="8,5"/>
+            </StackPanel>
+            <TextBlock Text="名字" FontSize="12" Foreground="#788195"/>
+            <Border Margin="0,5,0,12" Padding="8,5" CornerRadius="8" Background="#F8FAFD" BorderBrush="#E5E8F0" BorderThickness="1">
+              <TextBox x:Name="PetNameInput" MaxLength="24" BorderThickness="0" Background="Transparent" FontSize="12"/>
+            </Border>
+            <StackPanel x:Name="ColorRow">
+            <TextBlock Text="颜色" FontSize="12" Foreground="#788195"/>
+            <ComboBox x:Name="ColorSelect" Margin="0,5,0,12" Padding="8,5"/>
+            </StackPanel>
+            <Button x:Name="SaveLookBtn" Style="{StaticResource Main}" Content="保存名字和颜色" Padding="12,7" HorizontalAlignment="Left"/>
+            <TextBlock Text="小尺寸坐姿陪伴，指尖轻轻跟敲。拖动可托起，靠近屏幕边缘玩藏猫猫。切换角色保留名字和待办。" FontSize="11" Foreground="#788195" TextWrapping="Wrap" Margin="0,12,0,0"/>
+          </StackPanel>
+          </Grid>
+          </ScrollViewer>
             <DockPanel x:Name="OutRow" Margin="0,2,0,6" Visibility="Collapsed">
               <Button x:Name="UndoBtn" DockPanel.Dock="Right" Style="{StaticResource Ghost}" Margin="6,0,0,0" Padding="8,1" FontSize="11.5" Foreground="#4D6BFE" Content="撤销" Visibility="Collapsed" VerticalAlignment="Top"/>
               <TextBlock x:Name="OutText" FontSize="12" TextWrapping="Wrap" VerticalAlignment="Center"/>
             </DockPanel>
-          </StackPanel>
           <!-- 底栏：两个去 DSH 的入口 -->
           <Border Margin="0,6,0,0" BorderBrush="#F0F1F4" BorderThickness="0,1,0,0" Padding="8,6">
             <UniformGrid Columns="2">
@@ -564,6 +689,9 @@ $MaxCards = 3
 
 $window = [Windows.Markup.XamlReader]::Load((New-Object System.Xml.XmlNodeReader $xaml))
 $ui = @{}
+foreach ($n in 'DeskBody', 'PostureScale', 'TabToday', 'TabCompany', 'TabLook', 'TodayPage', 'CompanyPage', 'LookPage', 'PanelScroll', 'FollowInputCheck', 'MotionCheck', 'QuietCheck', 'PlayActions', 'PostureSelect', 'CharacterSelect', 'OutfitSelect', 'PetNameInput', 'ColorSelect', 'SaveLookBtn') { $ui[$n] = $window.FindName($n) }
+foreach ($n in 'BodyRig', 'InputBodyScale', 'InputBodyRot', 'InputBodyMove', 'ArmLScale', 'ArmRScale', 'PawL', 'PawR', 'KeysLMove', 'KeysRMove', 'KeyLightL', 'KeyLightR', 'ImpactL', 'ImpactR', 'EyeGlintL', 'EyeGlintR') { $ui[$n] = $window.FindName($n) }
+foreach ($n in 'VectorBody', 'SpriteView', 'SpritePrevious', 'SpriteRig', 'AtlasScale', 'AtlasRot', 'AtlasMove', 'AtlasBlink', 'AtlasParts', 'AtlasFingerL', 'AtlasFingerR', 'AtlasKeyL', 'AtlasKeyR', 'AtlasContactL', 'AtlasContactR', 'AvatarLegacy', 'AvatarPortrait', 'OutfitRow', 'ColorRow') { $ui[$n] = $window.FindName($n) }
 foreach ($n in 'Root', 'Stage', 'Pet', 'PetFlip', 'PetScale', 'PetBreath', 'PetRot', 'PetHop', 'PetBob', 'Bubble', 'BubbleText', 'EyeL', 'EyeR', 'EyeLX', 'EyeRX', 'EyeLO', 'EyeRO',
   'GestureScale', 'GestureRot', 'GestureHop', 'CharacterBack', 'CharacterFront', 'ArmL', 'ArmR', 'ArmLRot', 'ArmRRot', 'ArmLMove', 'ArmRMove',
   'Mouth', 'CheekL', 'CheekR', 'Sweat', 'Shine', 'FootL', 'FootR', 'Ahoge', 'AhogeRot', 'Body', 'Shadow', 'RingBox', 'Ring', 'Carry', 'CarryRot', 'CarryText', 'Fx', 'Keyboard',
@@ -576,6 +704,8 @@ foreach ($n in 'Root', 'Stage', 'Pet', 'PetFlip', 'PetScale', 'PetBreath', 'PetR
 function New-Brush([string]$hex) { New-Object Windows.Media.SolidColorBrush ([Windows.Media.ColorConverter]::ConvertFromString($hex)) }
 function Now-Ms { [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() }
 . (Join-Path $PSScriptRoot 'pet-art.ps1')
+. (Join-Path $PSScriptRoot 'pet-companion.ps1')
+. (Join-Path $PSScriptRoot 'pet-atlas.ps1')
 
 # ── 异步请求：发出去就返回，结果由 40ms 一次的定时器取回，交给指定的处理函数（按名字调用）──
 $script:pending = New-Object System.Collections.ArrayList
@@ -620,7 +750,7 @@ function Get-WorkArea([double]$x, [double]$y) {
   $script:scale = $scale
   $screen = [System.Windows.Forms.Screen]::FromPoint((New-Object System.Drawing.Point([int]($x * $scale), [int]($y * $scale))))
   $wa = $screen.WorkingArea
-  return @{ Left = $wa.Left / $scale; Top = $wa.Top / $scale; Right = $wa.Right / $scale; Bottom = $wa.Bottom / $scale }
+  return @{ Left = $wa.Left / $scale; Top = $wa.Top / $scale; Right = $wa.Right / $scale; Bottom = $wa.Bottom / $scale; ScreenBottom = $screen.Bounds.Bottom / $scale }
 }
 # 舞台（精灵那一列）在屏幕上的左边；窗口里另一列是气泡
 function Stage-Left { if ($script:side -eq 'right') { $window.Left } else { $window.Left + $WinW - $StageW } }
@@ -630,7 +760,7 @@ function Set-StageLeft([double]$x) {
   $window.Left = if ($script:side -eq 'right') { $x } else { $x - ($WinW - $StageW) }
 }
 function Here-Area { Get-WorkArea (Stage-Center) ($window.Top + $WinH / 2) }
-function Ground-Top { (Here-Area).Bottom - $WinH }
+function Ground-Top { (Here-Area).Bottom - $WinH + $script:spriteGroundOffset }
 # 气泡换边：精灵在屏幕上的位置不变
 function Set-Side([string]$side) {
   if ($script:side -eq $side) { return }
@@ -719,12 +849,14 @@ function Move-StageTo([double]$x) {
 # 按下：缩一下；弹起：回弹
 function Squash([double]$to) {
   if (Reduced-Motion) { return }
+  if ($script:spriteArt) { $to = 1 + ($to - 1) * .15 }
   $a = New-Anim $ui.PetScale.ScaleX $to 90
   $ui.PetScale.BeginAnimation([Windows.Media.ScaleTransform]::ScaleXProperty, $a)
   $ui.PetScale.BeginAnimation([Windows.Media.ScaleTransform]::ScaleYProperty, $a)
 }
 function Bounce {
   if (Reduced-Motion) { return }
+  if ($script:spriteArt) { Hop 3 260; return }
   $a = New-Keys @(@(0, 1.0), @(110, 1.14), @(220, 0.94), @(320, 1.0))
   $ui.PetScale.BeginAnimation([Windows.Media.ScaleTransform]::ScaleXProperty, $a)
   $ui.PetScale.BeginAnimation([Windows.Media.ScaleTransform]::ScaleYProperty, $a)
@@ -732,6 +864,11 @@ function Bounce {
 # 落地：压扁再弹回
 function Land-Squish {
   if (Reduced-Motion) { return }
+  if ($script:spriteArt) {
+    $ui.PetScale.BeginAnimation([Windows.Media.ScaleTransform]::ScaleYProperty, (New-Keys @(@(0, .96), @(120, 1.015), @(240, 1.0))))
+    $ui.PetScale.BeginAnimation([Windows.Media.ScaleTransform]::ScaleXProperty, (New-Keys @(@(0, 1.025), @(120, .995), @(240, 1.0))))
+    return
+  }
   $ui.PetScale.BeginAnimation([Windows.Media.ScaleTransform]::ScaleYProperty, (New-Keys @(@(0, 0.78), @(140, 1.08), @(260, 1.0))))
   $ui.PetScale.BeginAnimation([Windows.Media.ScaleTransform]::ScaleXProperty, (New-Keys @(@(0, 1.2), @(140, 0.95), @(260, 1.0))))
 }
@@ -774,6 +911,7 @@ function Set-Hidden([bool]$hide) {
   if ($hide -and ($ui.Bubble.Visibility -eq 'Visible' -or $ui.Panel.IsOpen)) { return } # 有话要说、面板开着时不藏
   $a = Here-Area
   $script:hidden = $hide
+  if($script:spriteArt.animations.style -eq 'seated-v2'){Update-AtlasFrame (Now-Ms);return}
   if ($script:edge -eq 'right') {
     $to = if ($hide) { $a.Right - $Peek - $PadX } else { $a.Right - $PetSize - $PadX }
   } else {
@@ -837,6 +975,8 @@ function Open-Panel {
   $ui.Bubble.Visibility = 'Collapsed'
   if (-not $script:awaiting) { Show-Out '' $false }
   Render-Cards $true
+  Select-CompanionTab 'today'
+  $ui.PanelScroll.MaxHeight = [Math]::Max(160, [Math]::Min(520, (Here-Area).Height - 170))
   [void]$window.Activate()
   $ui.Panel.IsOpen = $true
   [void]$ui.Input.Focus()
@@ -1162,6 +1302,7 @@ $ui.Pet.Add_MouseLeftButtonDown({
   $script:hidden = $false
   $window.BeginAnimation([Windows.Window]::LeftProperty, $null)
   $window.Left = $startX
+  $window.BeginAnimation([Windows.Window]::TopProperty, $null); $window.Top = $startY
   $prev = $script:act
   if ($prev -eq 'walk' -or $prev -eq 'fall') { $prev = 'idle' }
   Set-Act 'held'
@@ -1173,6 +1314,7 @@ $ui.Pet.Add_MouseLeftButtonDown({
   Squash 1
   $moved = [Math]::Abs($window.Left - $startX) + [Math]::Abs($window.Top - $startY)
   if ($moved -gt 3) { Release-Pet $samples; return }
+  if($script:spriteArt.animations.style -eq 'seated-v2' -and @('left','right') -contains $script:edge){$script:edge='ground';$script:hidden=$false;Set-Act 'idle';$a=Here-Area;Set-StageLeft ([Math]::Max($a.Left+8,[Math]::Min((Stage-Left),$a.Right-$StageW-8)));$window.Top=Ground-Top;Update-Layout;Save-Position;return}
   if ($prev -eq 'sleep') { Set-Act 'idle'; Wake-Up; return }
   Set-Act $prev
   if ($ui.Panel.IsOpen) { Close-Panel } else { Bounce; Open-Panel }
@@ -1275,6 +1417,7 @@ $miGround = New-MenuItem '回到任务栏上' 0xE896 ''
 $miGround.Add_Click({ $script:edge = 'ground'; $script:hidden = $false; Update-Layout; $script:vx = 0.0; $script:vy = 0.0; $script:maxFall = 0; Set-Act 'fall' })
 $miPause = New-MenuItem '暂停 Dot' 0xE769 '暂停定时任务和有副作用的操作'; $miPause.Add_Click({ Say $(if ($script:paused) { '/resume' } else { '/pause' }) })
 $miQuiet = New-MenuItem '安静模式' 0xE708 '不走动、不冒气泡'; $miQuiet.IsCheckable = $true
+$miQuiet.Add_Click({ $script:quiet = $script:sysQuiet -or $miQuiet.IsChecked; Reset-Input; Reset-Interaction; Sync-CompanionInput; $ui.QuietCheck.IsChecked = $miQuiet.IsChecked })
 $miExit = New-MenuItem '关掉桌面精灵' 0xE7E8 'DSH 重启后会再出现'; $miExit.Add_Click({ $window.Close() })
 function New-Sep { $x = New-Object Windows.Controls.Separator; $x.Style = $window.FindResource('Sep'); return $x }
 foreach ($mi in @($miOpen, $miSess, $miBrief, $miStats, (New-Sep), $miFocus, $miPlay, $miCharacters, $miOutfit, $miMotion, $miGround, (New-Sep), $miPause, $miQuiet, (New-Sep), $miExit)) { [void]$menu.Items.Add($mi) }
@@ -1284,6 +1427,7 @@ $menu.Add_Opened({
   $miPause.Icon = New-Glyph ([string][char]$(if ($script:paused) { 0xE768 } else { 0xE769 })) '#6B7280' 13
 })
 $ui.Pet.ContextMenu = $menu
+Initialize-CompanionPanel
 $ui.Pet.Add_MouseEnter({ $script:hoverSince = Now-Ms })
 $ui.Pet.Add_MouseLeave({ $script:hoverSince = 0 })
 
@@ -1305,8 +1449,9 @@ function Apply-Colors {
   $ui.Top.Color = [Windows.Media.ColorConverter]::ConvertFromString($c[0])
   $ui.Bottom.Color = [Windows.Media.ColorConverter]::ConvertFromString($c[1])
   $ui.Ahoge.Stroke = New-Brush $c[1]
-  $ui.AvTop.Color = $ui.Top.Color; $ui.AvBottom.Color = $ui.Bottom.Color
+  $ui.AvTop.Color = (Desk-CreamBrush).Color; $ui.AvBottom.Color = (Desk-BodyBrush).Color
   Update-ArtColors
+  Update-Posture
 }
 
 # 表情：眼睛（normal 竖条 / half 半闭 / line 闭眼 / dot 圆点 / wink 眨一只 / happy ^^ / dizzy 转圈）+ 嘴 + 腮红 + 汗
@@ -1332,13 +1477,18 @@ function Apply-Eyes {
   $ui.EyeLX.Visibility = $v; $ui.EyeRX.Visibility = $v
   $v = if ($e -eq 'dizzy') { 'Visible' } else { 'Collapsed' }
   $ui.EyeLO.Visibility = $v; $ui.EyeRO.Visibility = $v
+  $ui.EyeGlintL.Visibility = if ($e -eq 'normal' -or $e -eq 'wink') { 'Visible' } else { 'Collapsed' }
+  $ui.EyeGlintR.Visibility = if ($e -eq 'normal') { 'Visible' } else { 'Collapsed' }
   if (-not $bar) { return }
-  $h = switch ($e) { 'half' { 5 } 'line' { 2 } 'dot' { 6 } default { $script:eyeH } }
+  $h = switch ($e) { 'half' { 4 } 'line' { 1.8 } 'dot' { 6 } default { $script:eyeH * 0.66 } }
   $hr = if ($e -eq 'wink') { 2 } else { $h }
   $ui.EyeL.Height = $h; $ui.EyeR.Height = $hr
-  $ui.EyeL.Width = 6; $ui.EyeR.Width = 6
-  [Windows.Controls.Canvas]::SetLeft($ui.EyeL, 17 + $script:lookX); [Windows.Controls.Canvas]::SetLeft($ui.EyeR, 33 + $script:lookX)
+  $ui.EyeL.Width = 4.6; $ui.EyeR.Width = 4.6
+  [Windows.Controls.Canvas]::SetLeft($ui.EyeL, 17.7 + $script:lookX); [Windows.Controls.Canvas]::SetLeft($ui.EyeR, 33.7 + $script:lookX)
   [Windows.Controls.Canvas]::SetTop($ui.EyeL, 28 - $h / 2 + $script:lookY); [Windows.Controls.Canvas]::SetTop($ui.EyeR, 28 - $hr / 2 + $script:lookY)
+  [Windows.Controls.Canvas]::SetLeft($ui.EyeGlintL, 18.5 + $script:lookX); [Windows.Controls.Canvas]::SetLeft($ui.EyeGlintR, 34.5 + $script:lookX)
+  [Windows.Controls.Canvas]::SetTop($ui.EyeGlintL, 29 - $h / 2 + $script:lookY); [Windows.Controls.Canvas]::SetTop($ui.EyeGlintR, 29 - $hr / 2 + $script:lookY)
+  if ($h -lt 4) { $ui.EyeGlintL.Visibility = 'Collapsed' }; if ($hr -lt 4) { $ui.EyeGlintR.Visibility = 'Collapsed' }
 }
 function Set-Face([string]$eyes, [string]$mouth, [bool]$cheeks = $false, [bool]$sweat = $false) {
   $script:eyes = $eyes
@@ -1347,8 +1497,8 @@ function Set-Face([string]$eyes, [string]$mouth, [bool]$cheeks = $false, [bool]$
     $ui.Mouth.Data = Geo $MouthShapes[$mouth]
     $ui.Mouth.Fill = if ($mouth -eq 'open' -or $mouth -eq 'o') { New-Brush '#40203070' } else { $null }
   }
-  $v = if ($cheeks) { 'Visible' } else { 'Collapsed' }
-  $ui.CheekL.Visibility = $v; $ui.CheekR.Visibility = $v
+  $ui.CheekL.Visibility = 'Visible'; $ui.CheekR.Visibility = 'Visible'
+  $ui.CheekL.Opacity = $ui.CheekR.Opacity = if ($cheeks) { 1.0 } else { 0.55 }
   $ui.Sweat.Visibility = if ($sweat) { 'Visible' } else { 'Collapsed' }
   Apply-Eyes
 }
@@ -1445,7 +1595,7 @@ $script:quiet = $false; $script:sysQuiet = $false
 $script:stats = $null
 $script:focusInfo = $null; $script:restInfo = $null
 function Set-Act([string]$a) {
-  if ($a -ne 'idle') { Reset-Interaction }
+  if ($a -ne 'idle') { Reset-Interaction; Reset-Input }
   $script:act = $a
   if ($a -ne 'walk') {
     [Windows.Controls.Canvas]::SetTop($ui.FootL, 54); [Windows.Controls.Canvas]::SetTop($ui.FootR, 54)
@@ -1459,6 +1609,7 @@ function Set-Act([string]$a) {
   else { $ui.RingBox.Visibility = 'Collapsed' }
   Apply-Outfit
   Base-Face
+  Update-Posture
 }
 function Go-Sleep { Set-Act 'sleep' }
 function Wake-Up {
@@ -1469,7 +1620,7 @@ function Wake-Up {
 function Set-Typing([bool]$on) {
   if ($on -eq $script:typing) { return }
   $script:typing = $on
-  $ui.Keyboard.Visibility = if ($on) { 'Visible' } else { 'Collapsed' }
+  $ui.Keyboard.Visibility = if ($on -or ($script:posture -eq 'desk' -and @('sleep', 'rest', 'held', 'fall') -notcontains $script:act)) { 'Visible' } else { 'Collapsed' }
   if (-not $on) { [Windows.Controls.Canvas]::SetTop($ui.FootL, 54); [Windows.Controls.Canvas]::SetTop($ui.FootR, 54) }
 }
 # 勾掉一件待办：一颗星星飞进嘴里，嚼一嚼，开心一下
@@ -1579,10 +1730,11 @@ function Look-Around([double]$t) {
 # 空闲时的小动作，8~30 秒一次；安静、面板开着、鼠标在它身上时不做
 function Idle-Behavior([double]$t) {
   $script:nextIdleAt = $t + 8000 + $rand.Next(22000)
+  if ($script:spriteArt.animations) { return }
   if ($script:quiet -or $script:hidden -or (Reduced-Motion) -or $script:interaction -or $ui.Panel.IsOpen -or $ui.Root.IsMouseOver) { return }
   if ($script:mood -ne 'idle' -and $script:mood -ne 'done') { return }
   $r = $rand.Next(100)
-  if ($script:edge -eq 'ground' -and $r -lt 45 -and -not $script:typing) { Start-Walk; return }
+  if (-not $script:spriteArt -and -not $script:lineArt -and $script:posture -eq 'classic' -and $script:edge -eq 'ground' -and $r -lt 45 -and -not $script:typing) { Start-Walk; return }
   if ($script:petCatalog -and $r -ge 45) { $names = @('wave', 'shy', 'peek', 'dance', 'stretch'); Play-Interaction $names[$rand.Next($names.Count)]; return }
   if ($r -lt 58) { Hop 12 360; return }
   if ($r -lt 70) { Stretch; return }
@@ -1603,7 +1755,7 @@ $script:actQueue = New-Object System.Collections.ArrayList
 $script:actSending = $false
 function Queue-Minute {
   $kc = [DotPet.KeyCounter]::Count
-  $keys = if ([DotPet.KeyCounter]::On) { [int]($kc - $script:minuteKeys0) } else { 0 }
+  $keys = if ($script:keysStatsOn -and [DotPet.KeyCounter]::On) { [int]($kc - $script:minuteKeys0) } else { 0 }
   $script:minuteKeys0 = $kc
   if ($script:minuteActive -or $keys -gt 0) {
     [void]$script:actQueue.Add(@{ at = [int64]($script:curMinute * 60000); active = $script:minuteActive; keys = $keys })
@@ -1641,16 +1793,7 @@ function Second-Tick([double]$t) {
   $idle = [double][DotPet.Input]::IdleMs()
   $li = [DotPet.Input]::LastInputTick()
   if ($li -ne $script:lastInputTick) { $script:lastInputTick = $li; if ($idle -lt 2500) { $script:minuteActive = $true } }
-  # 打字节奏：最近 3 秒按了 8 下以上，就跟着一起敲
-  $typing = $false
-  if ([DotPet.KeyCounter]::On) {
-    $kc = [DotPet.KeyCounter]::Count
-    [void]$script:keyHist.Add($kc - $script:lastKeyCount); $script:lastKeyCount = $kc
-    while ($script:keyHist.Count -gt 3) { $script:keyHist.RemoveAt(0) }
-    $sum = 0; foreach ($k in $script:keyHist) { $sum += $k }
-    $typing = $sum -ge 8
-  }
-  Set-Typing ($typing -and $script:act -eq 'idle' -and -not $script:quiet)
+  Sync-CompanionInput
   $minute = [Math]::Floor($t / 60000)
   if ($minute -ne $script:curMinute) { Queue-Minute; $script:curMinute = $minute }
   # 睡觉：你离开 5 分钟；夜里（23 点到 7 点）离开 1 分钟。有输入就醒
@@ -1664,7 +1807,7 @@ function Second-Tick([double]$t) {
   if ($script:act -eq 'dizzy' -and $t -ge $script:dizzyUntil) { Set-Act 'idle'; Emote 'happy' 'smile' $false 700 }
   if ($script:act -eq 'idle' -and $t -ge $script:nextIdleAt) { Idle-Behavior $t }
   # 急事：举着包裹跳一跳
-  if ($script:carryUrgent -and $script:act -eq 'idle' -and -not (Reduced-Motion) -and -not $script:quiet -and ($script:secN % 4 -eq 0)) { Hop 10 300 }
+  if ($script:posture -eq 'classic' -and $script:carryUrgent -and $script:act -eq 'idle' -and -not (Reduced-Motion) -and -not $script:quiet -and ($script:secN % 4 -eq 0)) { Hop 10 300 }
   if ($script:act -eq 'focus' -or $script:act -eq 'rest') { Update-Ring $t }
   Base-Face
 }
@@ -1676,7 +1819,7 @@ function Engine-Tick {
   if ($script:act -eq 'fall') { Step-Fall $t }
   elseif ($script:act -eq 'walk') { Step-Walk $t }
   # 呼吸、呆毛（贴边藏起来时看不见，不动它们，免得白白重绘透明窗口）
-  if (-not $script:hidden -and -not (Reduced-Motion)) {
+  if (-not $script:spriteArt.animations -and -not $script:hidden -and -not (Reduced-Motion)) {
   $amp = if ($script:act -eq 'sleep' -or $script:act -eq 'rest') { 0.035 } else { 0.018 }
   $br = $script:breathBase + [Math]::Sin($t / 650.0) * $amp
   $ui.PetBreath.ScaleY = $br; $ui.PetBreath.ScaleX = 1 + (1 - $br) * 0.5
@@ -1692,18 +1835,17 @@ function Engine-Tick {
       Hop 8 300
     } else { Emote 'happy' $(if ($script:chewN % 2) { 'open' } else { 'w' }) $true 400 }
   }
-  # 跟着打字：两只脚轮流点
-  if ($script:typing) {
-    $up = if ((($t / 110) % 2) -lt 1) { 2.5 } else { 0 }
-    [Windows.Controls.Canvas]::SetTop($ui.FootL, 54 - $up); [Windows.Controls.Canvas]::SetTop($ui.FootR, 51.5 + $up)
-  }
+  Tick-Input $t
+  Update-AtlasFrame $t
   if ($t - $script:lastLook -ge 160) { $script:lastLook = $t; Look-Around $t }
   if ($t - $script:lastSec -ge 1000) { $script:lastSec = $t; Second-Tick $t }
   # 省电：透明窗口是软件渲染的，每动一下就要重画整个窗口。走路、掉落、粒子、嚼东西、打字时 30 帧；
   # 平时 10 帧；睡觉 8 帧；贴边藏起来时 4 帧且不做呼吸动画
   $sleepy = $script:act -eq 'sleep' -or $script:act -eq 'rest'
   $busy = ($script:interaction -and -not $script:interaction.reduced) -or ($script:parts.Count -and -not $sleepy) -or $script:chewN -or $script:typing -or $script:act -eq 'walk' -or $script:act -eq 'fall'
-  $ms = if ($busy) { 33 } elseif ($script:hidden) { 250 } elseif ($sleepy) { 125 } else { 100 }
+  $peekBusy=$script:spriteArt.animations.style -eq 'seated-v2' -and @('left','right') -contains $script:edge -and ($t-$script:spriteContextAt)%12000 -lt 3000 -and -not (Reduced-Motion) -and -not $script:quiet
+  $atlasBusy = $script:spriteArt.animations -and ($peekBusy -or $script:act -eq 'held' -or $script:spriteBlendAt -ge 0 -and $t - $script:spriteBlendAt -lt $script:spriteBlendMs -or $script:spriteMotion.blink -gt 0)
+  $ms = if ($script:typing) { 20 } elseif ($busy -or $atlasBusy) { 33 } elseif ($script:hidden) { 250 } elseif ($sleepy) { 125 } else { 80 }
   if ($engine.Interval.TotalMilliseconds -ne $ms) { $engine.Interval = [TimeSpan]::FromMilliseconds($ms) }
 }
 $engine = New-Object Windows.Threading.DispatcherTimer
@@ -1739,7 +1881,7 @@ function Render-Stats {
   if ($keysOn) { $line += "，敲了 $($st.keys) 下" }
   $ui.StatsNote.Text = $line + "`n只看有没有在用电脑" + $(if ($keysOn) { '、按了几下键' } else { '' }) + '，不记按了什么、在哪个程序里。数据只在本机，保留 30 天。'
   $ui.KeysBtn.Content = if ($keysOn) { '⌨ 不数按键了' } else { '⌨ 数按键' }
-  $ui.KeysBtn.ToolTip = if ($keysOn) { '停止数按键（立即卸载键盘钩子）' } else { '只数按了几下，不记按了什么。部分杀毒软件可能会提示键盘钩子' }
+  $ui.KeysBtn.ToolTip = if ($keysOn) { '停止记录按键次数；「跟着我敲字」仍由陪伴页单独控制' } else { '只数次数，不记录按键内容；与「跟着我敲字」分别设置' }
 }
 $ui.StatsText.Add_MouseLeftButtonUp({ Show-Stats ($ui.StatsBox.Visibility -ne 'Visible') })
 $ui.KeysBtn.Add_Click({ Send-Dot '/pet' @{ action = 'keys'; on = -not [bool]$script:stats.keysOn } 'On-OpDone' $null })
@@ -1777,7 +1919,9 @@ function Apply-Life($desk) {
   $st = $desk.stats
   $script:stats = $st
   if ($st) {
-    Sync-Keys ([bool]$st.keysOn)
+    if ($script:keysStatsOn -ne [bool]$st.keysOn) { $script:minuteKeys0 = [DotPet.KeyCounter]::Count }
+    $script:keysStatsOn = [bool]$st.keysOn
+    Sync-CompanionInput
     $ui.StatsText.Text = "今天$($st.line)" + $(if ($st.keysOn) { ' · ⌨ 在数按键' } else { '' }) + ' ›'
     if ($ui.StatsBox.Visibility -eq 'Visible') { Render-Stats }
   }
@@ -1813,6 +1957,8 @@ function On-Status($s, $state) {
   $script:failures = 0
   $script:paused = [bool]$s.paused
   $script:motionPreference = [string]$s.pet.motion
+  $script:followInput = $s.pet.followInput -ne $false
+  Set-Posture ([string]$s.pet.posture)
   Apply-Character $s.petArt
   Update-CharacterMenu
   if ((Reduced-Motion) -and $script:act -eq 'walk') { Set-Act 'idle'; Update-Layout }
@@ -1832,6 +1978,8 @@ function On-Status($s, $state) {
   $script:mood = $mood
   Apply-Colors
   if ($desk) { Apply-Life $desk }
+  Sync-CompanionInput
+  Sync-CompanionControls $s.pet
   Base-Face
 
   # Dot 的回复：发出之后来的那一段，直接显示在面板里
@@ -1987,12 +2135,12 @@ $window.Add_ContentRendered({
   Refresh-ArtCatalog
   Refresh
   if ($script:edge -ne 'ground') { Snap-Edge $script:edge }
-  if ($FirstRun) { Flash '我住在任务栏上啦。单击打开面板，双击打开 Dot；摸摸我、把文字拖给我；拖到屏幕边上我会藏起来' 9; Hop 16 420 }
+  if ($FirstRun) { Flash '你敲字，我也一起敲。点我打开面板：陪伴里可关闭跟敲，外观里可切换任务栏坐姿。双击打开 Dot，拖到边上也能藏起来' 9; Hop 16 420 }
   elseif ($script:edge -ne 'ground') { $hideTimer.Start() }
 })
 $window.Add_Closed({
   $poll.Stop(); $fast.Stop(); $pump.Stop(); $engine.Stop(); if ($rec) { $rec.Stop() }
-  try { [DotPet.KeyCounter]::Stop() } catch { }
+  try { [DotPet.KeyCounter]::React = $false; [DotPet.KeyCounter]::Bind($null, $null); [DotPet.KeyCounter]::Stop() } catch { }
   if ($script:hotkey) { [void][DotPet.Native]::UnregisterHotKey($script:hwnd, $HotkeyId) }
   try { $mutex.ReleaseMutex() } catch { }
   [Windows.Threading.Dispatcher]::CurrentDispatcher.InvokeShutdown()

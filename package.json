@@ -1,6 +1,6 @@
 {
   "name": "dsh-plugin-dot",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "Dot for DeepSeek Harness: a personal chief-of-staff agent preset with long-term memory, a task list with auto reminders, instant slash commands, allow/ask/block rules and an on-screen pet that reports status. · DSH 个人总管：记忆、事务与自动提醒、零模型快捷指令、自定义规则、桌面小精灵。",
   "type": "module",
   "main": "./lib/host.js",
@@ -17,7 +17,13 @@
     "cordis.patch.yml",
     "README.md",
     "CHANGELOG.md",
-    "LICENSE"
+    "LICENSE",
+    "!lib/pets/assets/whale-maiden-v*.png",
+    "!lib/pets/assets/young-man-v*.png",
+    "!lib/pets/assets/young-woman-v*.png",
+    "!lib/pets/assets/*-life-v*.png",
+    "!lib/pets/assets/*-typing-v*.png",
+    "!lib/pets/assets/*-micro-v1.png"
   ],
   "scripts": {
     "test": "node --test tests/*.test.mjs"
