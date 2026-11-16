@@ -2,18 +2,20 @@
 
 # Dot — a chief of staff for DeepSeek Harness
 
-**Remembers you, keeps track of every commitment, and looks after all your other sessions.**
+**Keeps your tasks and sessions in view, and keeps you company while you type.**
 
 [![version](https://img.shields.io/github/v/release/h958661134/dsh-plugin-dot?label=version&color=4f6bed)](https://github.com/h958661134/dsh-plugin-dot/releases)
 [![tests](https://github.com/h958661134/dsh-plugin-dot/actions/workflows/test.yml/badge.svg)](https://github.com/h958661134/dsh-plugin-dot/actions/workflows/test.yml)
 [![DSH](https://img.shields.io/badge/DSH-%E2%89%A50.2.0--rc.0%20%3C0.3.0-1f2937)](https://github.com/deepseek-ai/deepseek-harness)
-[![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![code license](https://img.shields.io/badge/code-MIT-blue)](LICENSE)
 
-[Quick start](#quick-start) · [Tour](#tour) · [Talking to Dot](#talking-to-dot) · [Safety model](#safety-model) · [FAQ](#faq) · [中文](README.md)
+[Quick start](#quick-start) · [Seven companions](#seven-companions) · [Interactions](#interactions) · [Tour](#tour) · [Talking to Dot](#talking-to-dot) · [Safety model](#safety-model) · [FAQ](#faq) · [中文](README.md)
 
-<img src="docs/images/hero.png" alt="Dot: the conversation on the left, the Today page of the Dot panel on the right, and the pet in the corner" width="100%">
+<img src="docs/images/dual-style-preview.png" alt="Dot v1.5.0: Whale Maiden, Sunny Boy, Youthful Girl, Scholar, Dot, Cotton Bunny and Mochi Cat" width="100%">
 
 </div>
+
+**v1.5.0 is available:** [release notes and download](https://github.com/h958661134/dsh-plugin-dot/releases/tag/v1.5.0). Four illustrated characters and three simple line companions, with typing responses enabled by default, seated poses, quiet idle gestures and edge peekaboo.
 
 > The UI and the agent speak Chinese today. An English UI is on the [roadmap](#roadmap).
 
@@ -43,23 +45,90 @@ Inspired by ChatGPT Dots. All data stays on your machine.
 
 **Requirements:** DeepSeek Harness `>=0.2.0-rc.0 <0.3.0` and Node.js 22+ (bundled with DSH). No extra API key: Dot uses the model you already configured in DSH.
 
+Quit DSH completely, then choose the command for your profile:
+
 ```bash
-dsh plugin --profile web add github:h958661134/dsh-plugin-dot
+# Windows desktop: a companion outside the DSH window
+dsh plugin --profile desktop add github:h958661134/dsh-plugin-dot#v1.5.0
+
+# Web: a companion inside the DSH page
+dsh plugin --profile web add github:h958661134/dsh-plugin-dot#v1.5.0
 ```
 
-For DSH Desktop, use `--profile desktop` and quit DSH first; append `#` plus a tag from [Releases](https://github.com/h958661134/dsh-plugin-dot/releases) (e.g. `#v1.3.0`) to pin a version. You can also `git clone https://github.com/h958661134/dsh-plugin-dot.git` and run `dsh plugin --profile web add ./dsh-plugin-dot`, or add the folder from the **Plugins** page in DSH Desktop. Then **quit DSH completely** (from the tray or Task Manager) and start it again. After the restart you'll find:
+**Use the same command to upgrade**, then restart DSH. Tasks, names and preferences are retained. The commands pin v1.5.0; omit the tag to follow the main branch. On Windows, the desktop CLI is in the installation directory at `resources/runtime/cli/bin/dsh.cmd`. You can also clone the repository and run `dsh plugin --profile web add ./dsh-plugin-dot`, or add the folder from the desktop **Plugins** page.
+
+After restarting, you'll find:
 
 - **Dot 总管** in the agent preset menu;
-- a pet in the bottom-right corner;
+- a standalone companion on Windows Desktop, or a pet in the bottom-right corner of the DSH web page;
 - a **会话总览** (Sessions overview) entry in the sidebar.
+
+## Companions
+
+### Seven companions
+
+Click the pet, then open **外观 → 小伙伴** (Appearance → Companion). Illustrated characters use matching designs across desk and seated poses; the refined line style is available alongside them.
+
+| Style | Companion | Look and personality |
+|---|---|---|
+| Illustrated | **Whale Maiden · 鲸鱼娘** | Blue and white, whale fins and a tail; gently swishes her tail and peeks from the screen edge |
+| Illustrated | **Sunny Boy · 阳光男孩** | A blue-and-white shirt and an easy smile; occasionally stretches |
+| Illustrated | **Youthful Girl · 青春女孩** | Chestnut hair and a mint cardigan; a cheerful wave or a quiet chin-rest |
+| Illustrated | **Scholar · 书卷姑娘** | Understated hanfu and a book; turns a page and looks up |
+| Simple line | **Dot · 小点** | A cream-colored round companion with fine outlines and little paws |
+| Simple line | **Cotton Bunny · 棉花兔** | Long ears, round paws and a light cartoon silhouette |
+| Simple line | **Mochi Cat · 糯米猫** | A round face, whiskers and a curled tail |
+
+**Illustrated characters have fixed outfits and palettes.** Line companions support colors and accessories: scarf, leaf, cap, headphones, bow, crown, or none. Switching characters preserves your name, tasks, focus session and preferences. Whale Maiden is a derivative of a community character design; see the asset credits and license below.
+
+### Interactions
+
+<img src="docs/images/dual-style-preview.gif" alt="Actual v1.5.0 companion renderer: alternating typing responses, blinks, seated poses and character gestures" width="100%">
+
+<sub>Exported from the actual web renderer with demo data. The static image above shows the same seven characters without animation.</sub>
+
+| What you do | How the companion responds |
+|---|---|
+| **Type at your desk** | Typing response is on by default. Hands alternate; illustrated fingers lift, press and rebound with a small keycap highlight. The body and keyboard stay steady, and the animation settles when you stop |
+| **Choose a full-body pose** | Select **任务栏坐姿** (taskbar sitting) under Appearance → Pose. It sits immediately at the Windows taskbar or web page edge. Saved standing preferences now use this seated pose |
+| **Pause for a moment** | Gentle breathing, blinking and an occasional chin-rest, plus tail swishes, stretches, waves or page turns |
+| **Pick it up** | Drag it for a small suspended sway; release it to return to its companion pose |
+| **Move it to a side edge** | It tucks away and peeks out with its head and hands. Hover to reveal it; click or drag it out to return |
+| **Play for a moment** | Right-click for **陪伴** (Companionship), with wave, hug, praise, peekaboo, sway, stretch, chin-rest and rest actions. Illustrated characters map these to gestures available in their current pose |
+| **Focus or keep things quiet** | Focus, rest, waiting for approval, pause and quiet mode take priority. **少动一点** (less motion) reduces companion animations |
+
+**Typing response and keystroke statistics are separate controls.** The Windows desktop companion responds to system input rhythm; the web companion responds only inside the current DSH page. Typing response does not read key content or enable statistics. Counting stays off by default and records only totals. An explicit choice to disable typing response survives upgrades. Characters stay compact and no longer stroll automatically.
+
+### Three quick-panel tabs
+
+<table>
+<tr><th>Today · 今天</th><th>Companionship · 陪伴</th><th>Appearance · 外观</th></tr>
+<tr>
+<td width="33%" valign="top"><img src="docs/images/companion-panel-today.png" alt="Today: task checkboxes, focus, shortcuts and quick input"></td>
+<td width="33%" valign="top"><img src="docs/images/companion-panel-company.png" alt="Companionship: typing response, reduced motion and eight action buttons"></td>
+<td width="33%" valign="top"><img src="docs/images/companion-panel-appearance.png" alt="Appearance: pose, character and name"></td>
+</tr>
+</table>
+
+<sub>Actual v1.5.0 web companion panels with demo data. Windows also provides these three tabs. The UI currently uses Chinese.</sub>
+
+- **Today:** handle notifications, finish tasks, start or stop focus, and enter a message or slash command.
+- **Companionship:** adjust typing response and motion, or trigger a small gesture.
+- **Appearance:** choose desk or seated mode, switch character and change its name; line companions also offer colors and accessories.
+
+Tasks, 25-minute focus sessions, morning and evening check-ins, work-time tracking, break reminders, sessions overview and notifications remain available. On Windows, **Alt+Shift+D** opens the pet panel; the pet starts and quits with DSH. There are no levels or daily streaks, and typing and idle animations use no model calls.
+
+See the [companion guide](docs/DESK-BUDDY.md) and [character catalog](lib/pets/README.md) (in Chinese). Assets and motion settings are separate so more companions can be added or replaced.
 
 ## Tour
 
-| | |
-|---|---|
-| <img src="docs/images/buddy.gif" alt="The pet strolling on the taskbar, holding a red parcel for an overdue todo, eating a star when it is ticked off, putting on a scarf, wearing headphones during a focus session, and wearing a crown" width="320"> | **The pet** lives on your taskbar in DSH Desktop for Windows: it strolls around when things are quiet, naps when you're away, falls back down when you drop it, and can be tossed. Drag it to a screen edge and it snaps and slides away. It's still part of the plugin and quits with DSH (elsewhere it sits inside the DSH page). Its body language is the status: it holds up a parcel when things need you (red when urgent), an envelope when a session finished, and eats a star when you tick off a todo. Click the headphones icon on a todo and it wears headphones and keeps you company for 25 minutes; it greets you in the morning, offers to push leftovers to tomorrow in the evening, and nudges you to take a break after 90 minutes of continuous work. Keystroke counting is off by default and only ever counts presses, never which keys. Measured cost on a Ryzen 7 5800H: 1–2% of one core while awake (about 0.1% of the whole CPU), and the same as v1.1 (under 1% of one core) when tucked at a screen edge; see [docs/DESKTOP-PET.md](docs/DESKTOP-PET.md#功耗). It stays quiet until something needs you. It has six states: idle, busy, waiting for you, just finished, alert and paused. Its panel holds at most three "needs you" cards, such as a finished session or an overdue task, a **Today** list you can tick off, snooze or focus on, and a quick input box with shortcut chips. The badge and the parcel count only things that need you; Dot's suggestions don't count. Right-click for a menu with icons: open Dot, sessions overview, daily brief, today's stats, focus, outfits, pause and quiet mode. Press **Alt+Shift+D** anywhere to open it. When DSH isn't in front, Dot also sends system notifications |
-| <img src="docs/images/overview.png" alt="Sessions overview" width="480"> | **Sessions overview** starts with three counts (waiting on you, running, finished) and a filter, then groups sessions into running (waiting ones first) and finished, one card per session: status, todo progress, recent steps, changed files, context usage and where it's blocked. You can search everything ever said in any session, and open, stop, watch, relay a message to, file as a task, or archive (with undo) each one. No more "untitled session": until DSH generates a title, the first message stands in. Unclear names (missing, too generic, duplicated, too long) are flagged; rename from the ⋯ menu, or let Dot read the sessions and propose names that apply only when you click (with undo) |
-| <img src="docs/images/tasks.png" alt="Tasks page" width="360"> | **The Dot panel** opens next to Dot sessions, with five pages: Today, Todos, Schedule, Memory and Rules. Today opens with a greeting and three counts (needs you, due today, overdue), then what needs you, today's todos and Dot's optional suggestions. Todos are grouped into overdue, today, upcoming, inbox and waiting on others, with steps, repeats, snooze presets and "hand to Dot"; done, dropped and snoozed can all be undone (see [docs/TODO.md](docs/TODO.md), in Chinese). On the Rules page you can try any tool call and see how the gate would treat it |
+<img src="docs/images/ui-refresh.png" alt="Actual UI preview with demo data: sessions overview beside the Today panel" width="100%">
+
+**Sessions overview** groups running, waiting and finished sessions. Each card shows status, task progress, recent steps, changed files and context usage. Search session history, open a session, stop or watch it, relay a message, file it as a task, or archive it with undo. Dot can also propose clearer names for your approval.
+
+**The Dot panel** opens next to Dot sessions, with five pages: Today, Todos, Schedule, Memory and Rules. Today shows what needs you, today's tasks and optional suggestions. Todos support groups, steps, repeats, snooze, waiting on others and delegation; completing, dropping and snoozing can be undone. The Rules page lets you try a tool call to see how the gate treats it. See the [todo guide](docs/TODO.md) for details.
+
+**In conversation**, one request can capture a task, reminder and preference. A receipt below the reply shows what was saved, with actions to complete a task or change its time.
 
 ## Talking to Dot
 
@@ -102,6 +171,18 @@ Everything is stored in `$DSH_HOME/dot/state.json`, a plain JSON file on your ma
 ## FAQ
 
 <details>
+<summary><b>Why doesn't it respond when I type in another app?</b></summary>
+
+System-wide input response requires the standalone **Windows desktop companion**, installed into the desktop profile. The web pet responds only to the current DSH page. Choose **桌边跟敲** (desk typing) in Appearance and enable **跟着我敲字** in Companionship. Focus, rest, waiting, quiet and reduced-motion states can suppress typing animation.
+</details>
+
+<details>
+<summary><b>Where is the standing pose, and why can't every character change outfits?</b></summary>
+
+v1.5.0 replaces standing with a compact seated pose and removes automatic strolling. Illustrated characters use their own outfits and palettes. Switch to Dot, Cotton Bunny or Mochi Cat for color and accessory controls; existing preferences are retained.
+</details>
+
+<details>
 <summary><b>I installed it but Dot isn't in the preset menu</b></summary>
 
 DSH loads plugins only at startup. Quit DSH completely and start it again. You can also check with `dsh plugin --profile web list`.
@@ -127,7 +208,9 @@ Only by reading their status for the overview. Stop, relay and archive happen on
 - [x] Pet, Dot panel, sub-agent monitoring
 - [x] Suggestion inbox, learning from corrections
 - [x] Session dispatch desk: search, read, relay, dispatch, tidy up
-- [x] Desk buddy: lives on the taskbar, focus sessions, morning and evening check-ins, work time
+- [x] Desk buddy: taskbar sitting, focus sessions, morning and evening check-ins, work time
+- [x] Seven companions in two styles: instant typing response, blinking, breathing, chin-rest, pickup and edge peekaboo
+- [x] Today / Companionship / Appearance tabs and an extensible character catalog
 - [x] Todos: groups, steps, repeats, waiting on others, snooze, hand to Dot, all undoable
 - [x] Session names: temporary titles, renames proposed by Dot
 - [ ] Sessions grouped by project (working directory)
@@ -137,11 +220,11 @@ Only by reading their status for the overview. Stop, relay and archive happen on
 ## Development
 
 ```bash
-npm test   # 170 tests on node:test, no install needed
+npm test   # 201 tests on node:test, no install needed
 ```
 
 Plain JavaScript ESM with `@ts-check`, with no build step and no runtime dependency on `@deepseek-ai/*` packages. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
-[MIT](LICENSE)
+Code is licensed under [MIT](LICENSE). Whale Maiden derivative assets use **CC BY-NC-SA 4.0**, based on 上善无形's community character 溟月 and ZipZipPipe's maid design. These assets are excluded from the code's MIT license. See [asset credits, licenses and generation records](lib/pets/assets/LICENSE.md).
